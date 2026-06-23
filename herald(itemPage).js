@@ -1,5 +1,5 @@
 import { currentMember } from 'wix-members-frontend';
-import { orders } from 'wix-pricing-plans-frontend';
+import { hasAnyActivePlan } from 'backend/pricing';
 
 // Helper function to convert Raw HTML from the database into a Wix Rich Content JSON object
 function convertHtmlToRichContent(htmlString, maxWords = null) {
@@ -95,16 +95,10 @@ $w.onReady(function () {
             let isFreePlan = true; 
             
             try {
-                let member = await currentMember.getMember();
-                if (member) {
-                    let memberOrders = await orders.listCurrentMemberOrders();
-                    let activePlans = memberOrders.filter(order => order.status === 'ACTIVE');
-                    if (activePlans && activePlans.length > 0) {
-                        isFreePlan = false; 
-                    }
-                }
+                const hasPlan = await hasAnyActivePlan();
+                isFreePlan = !hasPlan;
             } catch (err) {
-                console.error("DEBUG: listCurrentMemberOrders failed:", err);
+                console.error("DEBUG: hasAnyActivePlan failed:", err);
             }
             
             console.log("3. isFreePlan:", isFreePlan);
