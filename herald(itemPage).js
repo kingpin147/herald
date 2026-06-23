@@ -1,5 +1,5 @@
-import { currentMember } from 'wix-members-frontend';
-import { hasAnyActivePlan } from 'backend/pricing';
+import { currentMember, authentication } from 'wix-members-frontend';
+import { hasAnyActivePlan } from 'backend/pricing.web';
 
 // Helper function to convert Raw HTML from the database into a Wix Rich Content JSON object
 function convertHtmlToRichContent(htmlString, maxWords = null) {
@@ -68,6 +68,39 @@ function convertHtmlToRichContent(htmlString, maxWords = null) {
 
 $w.onReady(function () {
     $w("#dynamicDataset").onReady(async () => {
+        // Check if member is logged in
+        let member = await currentMember.getMember();
+        if (!member) {
+            console.log("User not logged in, prompting login.");
+            try {
+                await authentication.promptLogin();
+                // After successful login, re-fetch member
+                member = await currentMember.getMember();
+            } catch (loginErr) {
+                console.error("Login prompt failed or cancelled:", loginErr);
+                return;
+            }
+        }
+        // Member is logged in, now check plan
+        // Determine plan type
+        let isFreePlan = true;
+        try {
+            const hasPlan = await hasAnyActivePlan();
+            isFreePlan = !hasPlan;
+        } catch (err) {
+            console.error("DEBUG: hasAnyActivePlan failed:", err);
+        }
+
+        // Show/hide UI based on plan
+        if (isFreePlan) {
+            // Free plan: show plan UI and hide gallery
+            $w("#planUi").expand();
+            $w("#imagesGallery").collapse();
+        } else {
+            // Premium plan: hide plan UI and show gallery
+            $w("#planUi").collapse();
+            $w("#imagesGallery").expand();
+        }
         try {
             console.log("1. Dataset ready callback started.");
             const item = $w("#dynamicDataset").getCurrentItem();
@@ -92,14 +125,7 @@ $w.onReady(function () {
             
             console.log("2. Handling Rich Content logic...");
             let rawHtmlContent = item.articleText; 
-            let isFreePlan = true; 
-            
-            try {
-                const hasPlan = await hasAnyActivePlan();
-                isFreePlan = !hasPlan;
-            } catch (err) {
-                console.error("DEBUG: hasAnyActivePlan failed:", err);
-            }
+            // isFreePlan determined above after login and plan check
             
             console.log("3. isFreePlan:", isFreePlan);
             
