@@ -1,5 +1,4 @@
 import { currentMember, authentication } from "wix-members-frontend";
-import { openLightbox } from "wix-window";
 import { getArticleSecure, getUserAccessTier } from "backend/herald.web";
 
 /**
@@ -8,38 +7,34 @@ import { getArticleSecure, getUserAccessTier } from "backend/herald.web";
  * Implements the full paywall architecture described in the Phase 0 Blueprint:
  *
  *  1. REGISTRATION WALL (Section 4.1)
- *     Guest users see a NYT-style lightbox modal forcing login/registration.
- *     The article hero image is visible in the background.
+ *     Guest users see a Wix native login prompt forcing registration/login.
  *
  *  2. DUAL RICH CONTENT VIEWERS (Section 3.1)
  *     Two stacked RichContentViewer elements:
- *       #hookContentViewer    → bound to hook_300_words (free preview)
- *       #premiumContentViewer → bound to premium_content_html (gated)
+ *       #hookContentViewer    → populated programmatically with hookContent (free preview)
+ *       #premiumContentViewer → populated programmatically with premiumContent (gated)
  *
  *  3. CSS BLUR PAYWALL (Section 4.2)
- *     Free registered users see hook_300_words, then a CSS blur gradient
+ *     Free registered users see hookContent, then a CSS blur gradient
  *     (.paywall-fade-overlay with backdrop-filter: blur(10px)) dissolving
  *     the text, with the subscription banner overlaid.
  *
  *  4. ZERO-TRUST BACKEND (Section 4.3)
- *     premium_content_html is NEVER sent to the client for non-subscribers.
- *     The backend/herald.web.js gateway strips it server-side.
+ *     Premium content is NEVER sent to the client for non-subscribers.
+ *     The backend gateway (backend/herald.web.js) strips it and returns null.
  *
  *  5. PREMIUM EXPERIENCE (Section 4.4)
  *     Paid subscribers see the full article with no blur, no banner,
  *     and the image gallery expanded.
  *
  * Wix Editor Prerequisites:
- *  - A Dataset element (#dynamicDataset) bound to CPA_Herald_Articles.
+ *  - A Dataset element (#dynamicDataset) bound to HeraldArticles.
  *  - Text elements: #title, #authorName
  *  - Image element: #bannerImage
- *  - RichContentViewer: #hookContentViewer (bound to hook_300_words)
- *  - RichContentViewer: #premiumContentViewer (bound to premium_content_html)
+ *  - RichContentViewer: #hookContentViewer (unbound in Editor)
+ *  - RichContentViewer: #premiumContentViewer (unbound in Editor)
  *  - Container/Box: #paywallOverlay (contains the blur + subscription banner)
- *       Inside: #blurContainer (the CSS blur div)
- *       Inside: #subscriptionBanner (pricing plans CTA)
  *  - Gallery element: #imagesGallery
- *  - A Lightbox named "LoginModal" designed in the Editor (NYT-style)
  */
 
 $w.onReady(function () {
@@ -74,7 +69,7 @@ $w.onReady(function () {
       if (accessTier.hasPremium) {
         _renderPremiumExperience(item, secureArticle);
       } else {
-        _renderFreeExperience(item);
+        _renderFreeExperience(item, secureArticle);
       }
 
       console.log("Herald Item Page: Render complete.");
@@ -115,9 +110,8 @@ async function _determineAccessTier() {
 // ═══════════════════════════════════════════════════════════════════
 
 /**
- * Handles guest (unregistered/logged-out) users by opening the
- * NYT-style login lightbox. The article hero image remains visible
- * in the background while scrolling is effectively blocked by the lightbox.
+ * Handles guest (unregistered/logged-out) users by prompting them
+ * to log in/register using the native Wix authentication modal.
  *
  * After successful login, the page is refreshed to re-evaluate access.
  */
@@ -128,31 +122,16 @@ async function _handleGuestUser() {
   _collapseAllContent();
 
   try {
-    // Open the NYT-style login lightbox
-    // The lightbox should be designed in the Wix Editor with:
-    //   - "Read this article for free." header
-    //   - "Log in to continue." sub-header
-    //   - Email input + Continue button
-    //   - Google/Apple OAuth buttons
-    //   - "See subscription options" upsell footer link
-    const lightboxResult = await openLightbox("LoginModal");
+    // Prompt the user to log in using the native Wix login/signup UI
+    await authentication.promptLogin();
 
-    // If we get here, the lightbox closed — check if login succeeded
+    // Check if login succeeded and refresh the dataset
     const member = await currentMember.getMember();
     if (member) {
-      // Login successful — reload to re-render with proper access
       $w("#dynamicDataset").refresh();
     }
   } catch (err) {
-    console.error("Herald Item Page: Login lightbox failed:", err);
-
-    // Fallback: use the native Wix authentication prompt
-    try {
-      await authentication.promptLogin();
-      $w("#dynamicDataset").refresh();
-    } catch (loginErr) {
-      console.error("Herald Item Page: Fallback login failed:", loginErr);
-    }
+    console.error("Herald Item Page: Login prompt failed or cancelled:", err);
   }
 }
 
@@ -172,14 +151,14 @@ function _populateCommonUI(item) {
     $w("#title").text = item.title || "";
   }
 
-  // Author name
+  // Author name (database uses authorName)
   if ($w("#authorName").text !== undefined) {
-    $w("#authorName").text = item.author_name || "";
+    $w("#authorName").text = item.authorName || "";
   }
 
-  // Banner image
-  if (item.banner_image && $w("#bannerImage").src !== undefined) {
-    $w("#bannerImage").src = item.banner_image;
+  // Banner image (database uses bannerImage)
+  if (item.bannerImage && $w("#bannerImage").src !== undefined) {
+    $w("#bannerImage").src = item.bannerImage;
   }
 }
 
@@ -189,17 +168,21 @@ function _populateCommonUI(item) {
 
 /**
  * Renders the experience for free registered users (Level 0):
- *  - Shows the hook_300_words preview via #hookContentViewer
+ *  - Shows the hookContent preview via #hookContentViewer
  *  - Expands the paywall blur overlay at the bottom of the hook
  *  - Shows the subscription banner over the blurred area
  *  - Collapses the premium content viewer and gallery
  *
  * @param {Object} item - The current dataset item.
+ * @param {Object} secureArticle - The secure article object from backend.
  */
-function _renderFreeExperience(item) {
+function _renderFreeExperience(item, secureArticle) {
   console.log("Herald Item Page: Rendering FREE experience.");
 
-  // Show the hook content viewer (bound to hook_300_words via dataset)
+  // Show the hook content viewer (populated dynamically from backend)
+  if (secureArticle && secureArticle.hookContent) {
+    $w("#hookContentViewer").content = secureArticle.hookContent;
+  }
   $w("#hookContentViewer").expand();
 
   // Expand the paywall overlay (blur + subscription banner)
@@ -229,28 +212,29 @@ function _renderFreeExperience(item) {
  *  - Shows the image gallery
  *
  * @param {Object} item - The current dataset item.
- * @param {Object} secureArticle - The article object from the backend
- *                                 (with premium_content_html intact).
+ * @param {Object} secureArticle - The article object from the backend.
  */
 function _renderPremiumExperience(item, secureArticle) {
   console.log("Herald Item Page: Rendering PREMIUM experience.");
 
-  // Show the hook content viewer (beginning of article)
+  // Show the hook content viewer
+  if (secureArticle && secureArticle.hookContent) {
+    $w("#hookContentViewer").content = secureArticle.hookContent;
+  }
   $w("#hookContentViewer").expand();
 
   // Collapse the paywall overlay — no blur, no banner
   $w("#paywallOverlay").collapse();
 
   // Show the premium content viewer
-  // If the backend returned the premium content, bind it
-  if (secureArticle && secureArticle.premium_content_html) {
-    $w("#premiumContentViewer").content = secureArticle.premium_content_html;
+  if (secureArticle && secureArticle.premiumContent) {
+    $w("#premiumContentViewer").content = secureArticle.premiumContent;
   }
   $w("#premiumContentViewer").expand();
 
-  // Show the image gallery
-  if (item.images_gallery && item.images_gallery.length > 0) {
-    $w("#imagesGallery").items = item.images_gallery.map((img) => ({
+  // Show the image gallery (database uses imagesGallery)
+  if (item.imagesGallery && item.imagesGallery.length > 0) {
+    $w("#imagesGallery").items = item.imagesGallery.map((img) => ({
       type: "image",
       src: img.src,
       title: img.title || "",

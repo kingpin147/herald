@@ -62,8 +62,7 @@ function _setupIssueRepeater() {
     // Issue date — format as readable string
     if (itemData.issue_date) {
       const date = new Date(itemData.issue_date);
-      const options = { year: "numeric", month: "long" };
-      $item("#issueDate").text = date.toLocaleDateString("en-US", options);
+      $item("#issueDate").text = date.toLocaleDateString("en-US", { year: "numeric", month: "long" });
     } else {
       $item("#issueDate").text = "";
     }
