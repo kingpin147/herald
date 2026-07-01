@@ -1,6 +1,5 @@
-import wixData from "wix-data";
 import wixWindow from "wix-window";
-import { currentMember } from "wix-members-frontend";
+import { currentMember, authentication } from "wix-members-frontend";
 import { getIssuePdfSecure } from "backend/archive.web";
 
 /**
@@ -34,13 +33,63 @@ import { getIssuePdfSecure } from "backend/archive.web";
  *      - Access-denied message for non-subscribers
  */
 
-$w.onReady(function () {
-  $w("#issueDataset").onReady(() => {
+$w.onReady(async function () {
+  $w("#issueDataset").onReady(async () => {
     console.log("Herald Archive Page: Dataset ready.");
 
-    _setupIssueRepeater();
+    try {
+      // ─── Step 1: Check login — guests must register/login first ──
+      const isLoggedIn = await _checkLogin();
+      if (!isLoggedIn) {
+        return; // Page will reload after successful login
+      }
+
+      // ─── Step 2: Set up the issue grid ───────────────────────────
+      _setupIssueRepeater();
+    } catch (err) {
+      console.error("Herald Archive Page: Fatal error:", err);
+    }
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// LOGIN CHECK — REGISTRATION WALL
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Checks if the current visitor is logged in.
+ * If not, prompts them to log in/register using the native Wix modal.
+ * After successful login, the dataset refreshes and the page re-renders.
+ *
+ * @returns {Promise<boolean>} true if the user is (or becomes) logged in.
+ */
+async function _checkLogin() {
+  try {
+    const member = await currentMember.getMember();
+    if (member) {
+      return true; // Already logged in
+    }
+  } catch (e) {
+    // getMember throws when no session exists — treat as guest
+  }
+
+  console.log("Herald Archive Page: Guest user detected, showing login wall.");
+
+  try {
+    await authentication.promptLogin();
+
+    // Verify login succeeded
+    const member = await currentMember.getMember();
+    if (member) {
+      $w("#issueDataset").refresh();
+      return true;
+    }
+  } catch (err) {
+    console.error("Herald Archive Page: Login prompt failed or cancelled:", err);
+  }
+
+  return false;
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // REPEATER SETUP
@@ -50,7 +99,7 @@ $w.onReady(function () {
  * Configures the repeater to render each magazine cover card.
  */
 function _setupIssueRepeater() {
-  $w("#issueRepeater").onItemReady(($item, itemData, index) => {
+  $w("#issueRepeater").onItemReady(($item, itemData) => {
     // Cover image
     if (itemData.cover_image) {
       $item("#issueCover").src = itemData.cover_image;
