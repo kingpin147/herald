@@ -31,8 +31,10 @@ export const getArticleSecure = webMethod(
       });
 
       if (!article) {
+        console.log("herald.web: No article found for id:", articleId);
         return null;
       }
+      console.log("herald.web: Article found. title:", article.title, "| premiumPlan:", article.premiumPlan, "| articleText length:", article.articleText ? article.articleText.length : 0);
 
       // 2. Check if user is authenticated
       let memberId = null;
@@ -44,19 +46,31 @@ export const getArticleSecure = webMethod(
         memberId = null;
       }
 
-      // 3. If article is not premium, convert full text to hookContent and return
+      // 3. If article is not premium, return full content to all logged-in users,
+      //    but still show 300-word preview to guests/non-logged-in users
       if (!article.premiumPlan) {
-        article.hookContent = convertHtmlToRichContent(article.articleText, null);
+        console.log("herald.web: Article is free (no premiumPlan). memberId:", memberId ? "present" : "null");
+        if (!memberId) {
+          // Guest — show 300-word preview even for free articles
+          article.hookContent = convertHtmlToRichContent(article.articleText, 300);
+          console.log("herald.web: Free article, guest — 300w preview nodes:", article.hookContent.nodes.length);
+        } else {
+          // Logged-in user — show full free article
+          article.hookContent = convertHtmlToRichContent(article.articleText, null);
+          console.log("herald.web: Free article, member — full content nodes:", article.hookContent.nodes.length);
+        }
         article.premiumContent = null;
-        article.articleText = null; // Strip raw HTML before sending to client
+        article.articleText = null;
         return article;
       }
 
       // 4. If user is guest, generate truncated preview only
       if (!memberId) {
+        console.log("herald.web: Guest user. articleText type:", typeof article.articleText, "| length/keys:", article.articleText ? (typeof article.articleText === 'string' ? article.articleText.length : JSON.stringify(article.articleText).length) : 0);
         article.hookContent = convertHtmlToRichContent(article.articleText, 300);
+        console.log("herald.web: hookContent nodes generated (guest 300w):", article.hookContent.nodes.length);
         article.premiumContent = null;
-        article.articleText = null; // Strip full raw HTML
+        article.articleText = null;
         return article;
       }
 
@@ -64,12 +78,14 @@ export const getArticleSecure = webMethod(
       const hasActiveSub = await _checkActiveSubscription();
 
       if (hasActiveSub) {
-        // Subscribed member: return full content under premiumContent, preview under hookContent
+        console.log("herald.web: Paid subscriber. Generating full + preview content.");
         article.hookContent = convertHtmlToRichContent(article.articleText, 300);
         article.premiumContent = convertHtmlToRichContent(article.articleText, null);
+        console.log("herald.web: premiumContent nodes:", article.premiumContent.nodes.length);
       } else {
-        // Free member: return truncated preview only
+        console.log("herald.web: Free member. articleText length:", article.articleText ? article.articleText.length : 0);
         article.hookContent = convertHtmlToRichContent(article.articleText, 300);
+        console.log("herald.web: hookContent nodes generated (free 300w):", article.hookContent.nodes.length);
         article.premiumContent = null;
       }
 
@@ -136,37 +152,116 @@ async function _checkActiveSubscription() {
 }
 
 /**
- * Helper function to convert Raw HTML from the database into a Wix Rich Content JSON object.
- * Truncates text by word count if maxWords is specified.
+ * Converts articleText (either a Wix Ricos JSON object or raw HTML string)
+ * into a valid Ricos document for the RichContentViewer.
+ * Truncates by word count if maxWords is specified.
  *
- * @param {string} htmlString - Raw HTML content
- * @param {number|null} maxWords - Maximum word limit for preview
+ * @param {Object|string} articleText - Ricos JSON object or raw HTML string
+ * @param {number|null} maxWords - Maximum word limit for preview (null = full)
  * @returns {Object} Ricos Document JSON object
  */
-function convertHtmlToRichContent(htmlString, maxWords = null) {
-  if (!htmlString) return { nodes: [] };
+function convertHtmlToRichContent(articleText, maxWords = null) {
+  const emptyDoc = {
+    nodes: [],
+    metadata: { version: 1, createdTimestamp: new Date().toISOString(), updatedTimestamp: new Date().toISOString() }
+  };
 
-  const richContent = { nodes: [] };
-  // Split the HTML by paragraph tags
-  const paragraphs = htmlString.split(/<p[^>]*>/i);
+  if (!articleText) {
+    console.log("herald.web: convertHtmlToRichContent — articleText is null/empty.");
+    return emptyDoc;
+  }
+
+  // ── Case 1: articleText is already a Ricos JSON object ──────────
+  // Wix Rich Content CMS fields return a Ricos document directly.
+  if (typeof articleText === 'object' && articleText.nodes) {
+    console.log("herald.web: articleText is already a Ricos document. nodes:", articleText.nodes.length);
+
+    if (maxWords === null) {
+      // Return full document as-is, ensure metadata exists
+      return {
+        nodes: articleText.nodes,
+        metadata: articleText.metadata || { version: 1, createdTimestamp: new Date().toISOString(), updatedTimestamp: new Date().toISOString() }
+      };
+    }
+
+    // Truncate by extracting text from nodes up to maxWords
+    const truncatedNodes = [];
+    let wordCount = 0;
+    let limitReached = false;
+
+    for (const node of articleText.nodes) {
+      if (limitReached) break;
+      if (node.type !== 'PARAGRAPH' && node.type !== 'HEADING') {
+        truncatedNodes.push(node);
+        continue;
+      }
+
+      const textNodes = [];
+      for (const child of (node.nodes || [])) {
+        if (limitReached) break;
+        if (child.type === 'TEXT' && child.textData) {
+          const words = (child.textData.text || '').split(/\s+/).filter(w => w.length > 0);
+          if (wordCount + words.length > maxWords) {
+            const allowed = maxWords - wordCount;
+            const truncatedText = words.slice(0, allowed).join(' ') + '...';
+            textNodes.push({ ...child, textData: { ...child.textData, text: truncatedText } });
+            wordCount = maxWords;
+            limitReached = true;
+          } else {
+            wordCount += words.length;
+            textNodes.push(child);
+          }
+        } else {
+          textNodes.push(child);
+        }
+      }
+      if (textNodes.length > 0) {
+        truncatedNodes.push({ ...node, nodes: textNodes });
+      }
+    }
+
+    if (limitReached) {
+      truncatedNodes.push({
+        type: "PARAGRAPH",
+        id: "upgrade_notice",
+        nodes: [{ type: "TEXT", id: "", nodes: [], textData: { text: "Upgrade to Premium to read the full article.", decorations: [] } }],
+        paragraphData: {}
+      });
+    }
+
+    console.log("herald.web: Ricos truncation complete. nodes:", truncatedNodes.length, "| words:", wordCount);
+    return {
+      nodes: truncatedNodes,
+      metadata: articleText.metadata || { version: 1, createdTimestamp: new Date().toISOString(), updatedTimestamp: new Date().toISOString() }
+    };
+  }
+
+  // ── Case 2: articleText is a raw HTML string ─────────────────────
+  if (typeof articleText !== 'string') {
+    console.log("herald.web: articleText is unknown type:", typeof articleText);
+    return emptyDoc;
+  }
+
+  console.log("herald.web: convertHtmlToRichContent — HTML string input length:", articleText.length, "| maxWords:", maxWords);
+
+  const contentNodes = [];
+  const paragraphs = articleText.split(/<p[^>]*>/i);
   let wordCount = 0;
   let limitReached = false;
+  let nodeIndex = 0;
 
   for (let i = 0; i < paragraphs.length; i++) {
     if (limitReached) break;
 
-    // Get the content inside the paragraph
     let pContent = paragraphs[i].split(/<\/p>/i)[0].trim();
     if (!pContent) continue;
 
-    // Clean up common HTML entities and tags
     pContent = pContent.replace(/<br\s*\/?>/gi, '\n');
     let text = pContent.replace(/<[^>]+>/g, '');
-    text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&');
+    text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 
     if (!text || text.trim() === "") continue;
 
-    // Apply truncation if needed
     if (maxWords !== null) {
       const words = text.split(/\s+/).filter(w => w.length > 0);
       if (wordCount + words.length > maxWords) {
@@ -179,30 +274,26 @@ function convertHtmlToRichContent(htmlString, maxWords = null) {
       }
     }
 
-    // Create a valid Wix Rich Content PARAGRAPH node
-    richContent.nodes.push({
+    contentNodes.push({
       type: "PARAGRAPH",
-      id: "p" + i,
-      nodes: [{
-        type: "TEXT",
-        id: "",
-        textData: { text: text }
-      }]
+      id: "p" + nodeIndex++,
+      nodes: [{ type: "TEXT", id: "", nodes: [], textData: { text: text, decorations: [] } }],
+      paragraphData: {}
     });
   }
 
-  // Add Upgrade notice if truncated
   if (limitReached) {
-    richContent.nodes.push({
+    contentNodes.push({
       type: "PARAGRAPH",
       id: "upgrade_notice",
-      nodes: [{
-        type: "TEXT",
-        id: "",
-        textData: { text: "\n\n[Upgrade to Premium to read the full article]" }
-      }]
+      nodes: [{ type: "TEXT", id: "", nodes: [], textData: { text: "Upgrade to Premium to read the full article.", decorations: [] } }],
+      paragraphData: {}
     });
   }
 
-  return richContent;
+  console.log("herald.web: HTML conversion complete. output nodes:", contentNodes.length, "| truncated:", limitReached);
+  return {
+    nodes: contentNodes,
+    metadata: { version: 1, createdTimestamp: new Date().toISOString(), updatedTimestamp: new Date().toISOString() }
+  };
 }
