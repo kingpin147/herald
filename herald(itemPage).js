@@ -1,5 +1,6 @@
 import { currentMember, authentication } from "wix-members-frontend";
 import { getArticleSecure, getUserAccessTier } from "backend/herald.web";
+import wixWindow from "wix-window-frontend";
 
 /**
  * Herald Dynamic Item Page
@@ -39,6 +40,19 @@ $w.onReady(async function () {
     console.log("Herald Item Page: Dataset ready.");
 
     try {
+      // ─── Step 0: Skip auth entirely in Editor preview ───────────
+      const currentViewMode = wixWindow.viewMode;
+      console.log("Herald Item Page: viewMode =", currentViewMode);
+      if (currentViewMode === "Editor" || currentViewMode === "Preview") {
+        console.log("Herald Item Page: Editor/Preview mode — skipping auth, rendering free preview.");
+        const item = $w("#dynamicDataset").getCurrentItem();
+        if (!item) { console.error("Herald Item Page: No item in dataset."); return; }
+        _populateCommonUI(item);
+        const secureArticle = await getArticleSecure(item._id);
+        _renderFreeExperience(item, secureArticle);
+        return;
+      }
+
       // ─── Step 1: Determine user access tier ─────────────────────
       const accessTier = await _determineAccessTier();
       console.log("Herald Item Page: Access tier:", accessTier);
@@ -177,20 +191,26 @@ function _renderFreeExperience(item, secureArticle) {
 
   // Show content in the single rich content viewer
   try {
-    const content = secureArticle.premiumContent || secureArticle.hookContent;
+    const content = secureArticle?.premiumContent || secureArticle?.hookContent;
+    console.log("Herald Item Page: hookContent present:", !!secureArticle?.hookContent);
+    console.log("Herald Item Page: content nodes count:", content?.nodes?.length ?? 0);
     if (content) {
       $w("#richContentViewer").content = content;
+    } else {
+      console.warn("Herald Item Page: No content to display in #richContentViewer.");
     }
     $w("#richContentViewer").expand();
+    console.log("Herald Item Page: #richContentViewer expanded.");
   } catch (e) {
-    console.warn("Herald Item Page: #richContentViewer failed:", e);
+    console.warn("Herald Item Page: #richContentViewer failed:", e.message || e);
   }
 
   // Expand the plan UI box (subscription banner)
   try {
     $w("#planUi").expand();
+    console.log("Herald Item Page: #planUi expanded.");
   } catch (e) {
-    console.warn("Herald Item Page: #planUi does not exist:", e);
+    console.warn("Herald Item Page: #planUi expand failed:", e.message || e);
   }
 
   // Collapse the image gallery for free users
