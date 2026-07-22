@@ -1,0 +1,74 @@
+import wixData from 'wix-data';
+import { currentMember } from 'wix-members-backend';
+
+// The ID of the "Individual All-Access" plan from Wix Pricing Plans
+const ALL_ACCESS_PLAN_ID = "YOUR_ALL_ACCESS_PLAN_ID"; 
+
+export async function getArticleSecurely(articleSlug) {
+    try {
+        // Fetch the article from the CMS
+        const queryResults = await wixData.query("Articles")
+            .eq("slug", articleSlug)
+            .find({ suppressAuth: true }); // Backend fetch
+
+        if (queryResults.items.length === 0) {
+            return { success: false, error: "Article not found" };
+        }
+
+        const article = queryResults.items[0];
+
+        // Evaluate Entitlement
+        const hasAccess = await checkEntitlement();
+
+        if (!hasAccess) {
+            // DATA STRIPPING MANDATE: 
+            // If the engine returns false, strip the premium payload before sending to client.
+            article.premium_content_html = null;
+        }
+
+        return {
+            success: true,
+            hasAccess: hasAccess,
+            article: article
+        };
+    } catch (error) {
+        console.error("Error fetching article securely:", error);
+        return { success: false, error: "Internal Server Error" };
+    }
+}
+
+async function checkEntitlement() {
+    const member = await currentMember.getMember();
+    if (!member) {
+        return false;
+    }
+
+    try {
+        // Condition 1: Native Pricing Plans (Pipeline A: Individual All-Access)
+        const orderResults = await wixData.query("PricingPlans/Orders")
+            .eq("memberId", member._id)
+            .eq("status", "ACTIVE")
+            .eq("planId", ALL_ACCESS_PLAN_ID)
+            .find({ suppressAuth: true });
+
+        if (orderResults.items.length > 0) return true;
+
+        // Fetch Roles & Badges for Conditions 2 & 3
+        const roles = await currentMember.getRoles();
+
+        // Condition 2: Custom Role (Pipeline B: Store Webhook)
+        const hasPremiumRole = roles.some(role => role.title === "Herald_Premium" || role.name === "Herald_Premium");
+        if (hasPremiumRole) return true;
+
+        // Condition 3: Backend VIP Tag (Pipeline C: White-Glove B2B)
+        // Admin manually assigns the "VIP" role/badge in the Wix Dashboard
+        const isVIP = roles.some(role => role.title === "VIP" || role.name === "VIP");
+        if (isVIP) return true;
+
+        // If none of the conditions are met, deny access
+        return false;
+    } catch (err) {
+        console.error("Entitlement check failed:", err);
+        return false;
+    }
+}

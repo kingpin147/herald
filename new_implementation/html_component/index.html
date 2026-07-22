@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herald Custom UI</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .content {
+            margin-top: 20px;
+        }
+        .premium-banner {
+            background-color: #ffd700;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .btn {
+            background-color: #000;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #333;
+        }
+        .grid-layout {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>The Herald</h1>
+        <div id="userState">Loading...</div>
+    </div>
+
+    <div id="appContent" class="content">
+        <!-- Content gets injected here based on routing -->
+    </div>
+
+    <script>
+        let globalState = {
+            path: [],
+            query: {},
+            pricingPlans: [],
+            user: {
+                loggedIn: false,
+                hasPremiumAccess: false
+            }
+        };
+
+        // Notify Velo that the component is ready to receive messages
+        window.parent.postMessage({ type: 'COMPONENT_READY' }, "*");
+
+        // Listen for messages from Velo
+        window.onmessage = function(event) {
+            const data = event.data;
+            if (!data) return;
+
+            switch (data.type) {
+                case 'INIT_STATE':
+                    globalState = { ...globalState, ...data.payload };
+                    renderApp();
+                    break;
+                case 'ROUTE_CHANGE':
+                    globalState.path = data.payload.path;
+                    globalState.query = data.payload.query;
+                    renderApp();
+                    break;
+                case 'PAYMENT_SUCCESS':
+                    alert('Payment successful! Your premium access is unlocked.');
+                    // In a real app, Velo might refresh the page or send a new INIT_STATE
+                    // For now, let's optimistically update the state
+                    globalState.user.hasPremiumAccess = true;
+                    renderApp();
+                    break;
+                case 'PAYMENT_FAILED':
+                    alert('Payment failed: ' + data.payload.status);
+                    break;
+            }
+        };
+
+        function renderApp() {
+            const userStateEl = document.getElementById('userState');
+            const appContentEl = document.getElementById('appContent');
+
+            // Render User State
+            if (globalState.user.loggedIn) {
+                userStateEl.innerHTML = globalState.user.hasPremiumAccess 
+                    ? `<span style="color: green;">Premium Member</span>`
+                    : `<span>Free Member</span>`;
+            } else {
+                userStateEl.innerHTML = `<span>Guest (Not Logged In)</span>`;
+            }
+
+            // Simple Router Implementation
+            const pathString = globalState.path.join('/');
+            
+            if (pathString === 'pricing') {
+                renderPricing(appContentEl);
+            } else if (pathString === 'article') {
+                renderArticle(appContentEl);
+            } else {
+                renderHome(appContentEl);
+            }
+        }
+
+        function renderHome(container) {
+            container.innerHTML = `
+                <h2>Latest News</h2>
+                <div class="grid-layout">
+                    <div class="card">
+                        <h3>Breaking News 1</h3>
+                        <p>Preview of the article...</p>
+                        <a href="javascript:void(0)" onclick="navigateTo('article')">Read More</a>
+                    </div>
+                    <div class="card">
+                        <h3>Premium Insights</h3>
+                        <p>Deep dive into industry trends...</p>
+                        <a href="javascript:void(0)" onclick="navigateTo('article')">Read More</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderPricing(container) {
+            let plansHtml = '';
+            
+            if (globalState.pricingPlans && globalState.pricingPlans.length > 0) {
+                globalState.pricingPlans.forEach(plan => {
+                    plansHtml += `
+                        <div class="card">
+                            <h3>${plan.planName}</h3>
+                            <p>$${plan.price} / ${plan.durationDays} Days</p>
+                            <button class="btn" onclick="requestCheckout('${plan.planId}')">Buy Now</button>
+                        </div>
+                    `;
+                });
+            } else {
+                plansHtml = '<p>Loading pricing plans...</p>';
+            }
+
+            container.innerHTML = `
+                <h2>Subscribe</h2>
+                <div class="grid-layout">
+                    ${plansHtml}
+                </div>
+            `;
+        }
+
+        function renderArticle(container) {
+            if (globalState.user.hasPremiumAccess) {
+                container.innerHTML = `
+                    <div class="premium-banner">✨ You have Premium Access</div>
+                    <h2>Exclusive Article</h2>
+                    <p>This is the full text of the article available only to subscribers. It contains rich formatting, deep insights, and highly valuable information that justifies the subscription cost.</p>
+                `;
+            } else {
+                container.innerHTML = `
+                    <h2>Exclusive Article</h2>
+                    <p>This is the 100-word hook. The rest of the content is locked behind a paywall.</p>
+                    <div style="margin-top: 30px; text-align: center;">
+                        <button class="btn" onclick="navigateTo('pricing')">View Pricing Plans</button>
+                    </div>
+                `;
+            }
+        }
+
+        // --- Action Handlers ---
+
+        function requestCheckout(planId) {
+            // Send a message back to Velo to trigger wixPay
+            window.parent.postMessage({
+                type: 'CHECKOUT_REQUEST',
+                payload: { planId: planId }
+            }, "*");
+        }
+
+        function navigateTo(path) {
+            // In a real SPA embedded in Wix, you might want to tell Wix to update its URL
+            // using wixLocation.to() by sending a message, or just handle it internally.
+            // For this demo, we handle it internally to demonstrate SPA capability.
+            globalState.path = [path];
+            renderApp();
+        }
+    </script>
+</body>
+</html>

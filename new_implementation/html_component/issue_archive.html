@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Herald Issue Archive</title>
+    <style>
+        :root {
+            --primary: #111;
+            --background: #fdfdfd;
+            --border: #e0e0e0;
+        }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--background);
+            color: var(--primary);
+            margin: 0;
+            padding: 40px 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-family: 'Crimson Text', serif;
+            font-size: 2.5rem;
+            margin: 0 0 10px 0;
+        }
+        
+        /* Grid Layout */
+        .issue-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Card */
+        .issue-card {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .issue-card:hover {
+            transform: translateY(-5px);
+        }
+        .issue-cover {
+            width: 100%;
+            height: auto;
+            aspect-ratio: 3/4;
+            object-fit: cover;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+        }
+        .issue-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 0 0 5px 0;
+        }
+        .issue-date {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+        .modal-cover {
+            max-width: 250px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .btn-download {
+            background-color: var(--primary);
+            color: #fff;
+            padding: 12px 24px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+        .btn-download.disabled {
+            background-color: #999;
+            pointer-events: none;
+        }
+        .upsell-msg {
+            color: #d93025;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+
+        #loading {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>The Herald Archive</h1>
+        <p>Explore past issues and treatises.</p>
+    </div>
+
+    <div id="loading">Loading archive...</div>
+    <div id="issueGrid" class="issue-grid"></div>
+
+    <!-- The Modal -->
+    <div id="issueModal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <img id="modalImg" class="modal-cover" src="" alt="Issue Cover">
+            <h2 id="modalTitle" style="margin: 0 0 5px 0;"></h2>
+            <p id="modalDate" style="color: #666; margin: 0 0 20px 0;"></p>
+            
+            <div id="downloadContainer">
+                <!-- Action button injected via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentIssues = [];
+
+        window.onload = function() {
+            window.parent.postMessage({ type: 'COMPONENT_READY' }, "*");
+        };
+
+        window.onmessage = function(event) {
+            if (event.data && event.data.type === 'RENDER_ARCHIVE') {
+                document.getElementById('loading').style.display = 'none';
+                currentIssues = event.data.payload.issues;
+                renderGrid(currentIssues);
+            }
+            if (event.data && event.data.type === 'RENDER_ERROR') {
+                document.getElementById('loading').innerText = event.data.payload.message;
+            }
+        };
+
+        function renderGrid(issues) {
+            const grid = document.getElementById('issueGrid');
+            grid.innerHTML = '';
+
+            issues.forEach((issue, index) => {
+                // Ensure date formatting
+                const dateObj = new Date(issue.issue_date);
+                const dateStr = !isNaN(dateObj) ? dateObj.toLocaleDateString("en-US", { year: "numeric", month: "long" }) : "";
+
+                const cardHtml = `
+                    <div class="issue-card" onclick="openModal(${index})">
+                        <img class="issue-cover" src="${issue.coverImage || 'https://via.placeholder.com/300x400?text=No+Cover'}" alt="${issue.title}">
+                        <h3 class="issue-title">${issue.title}</h3>
+                        <div class="issue-date">${dateStr}</div>
+                    </div>
+                `;
+                grid.innerHTML += cardHtml;
+            });
+        }
+
+        function openModal(index) {
+            const issue = currentIssues[index];
+            if (!issue) return;
+
+            document.getElementById('modalImg').src = issue.coverImage || 'https://via.placeholder.com/300x400?text=No+Cover';
+            document.getElementById('modalTitle').innerText = issue.title;
+            
+            const dateObj = new Date(issue.issue_date);
+            document.getElementById('modalDate').innerText = !isNaN(dateObj) ? dateObj.toLocaleDateString("en-US", { year: "numeric", month: "long" }) : "";
+
+            const container = document.getElementById('downloadContainer');
+            
+            // Check Entitlement by verifying if the backend provided the PDF URL
+            if (issue.print_edition_pdf) {
+                container.innerHTML = `
+                    <a href="${issue.print_edition_pdf}" target="_blank" class="btn-download">Download Full Issue (PDF)</a>
+                `;
+            } else {
+                container.innerHTML = `
+                    <a href="#" class="btn-download disabled">Download Locked</a>
+                    <p class="upsell-msg">You need a premium subscription to download PDFs.</p>
+                `;
+            }
+
+            document.getElementById('issueModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('issueModal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
