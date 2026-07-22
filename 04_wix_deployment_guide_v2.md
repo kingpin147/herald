@@ -54,3 +54,15 @@ Pipeline C operates purely through native Wix tools and the custom Entitlement E
 1. Ensure your Lightboxes (`Submit_Academic_Credentials` and `Corporate_Inquiry_Form`) exist.
 2. Ensure your Subscribe page buttons route to these Lightboxes (as shown in `pages/subscribe.js`).
 3. **No extra code is needed:** When your admin approves a corporate user, they just manually assign them the "VIP" badge in the Wix Members Dashboard. The backend script will instantly recognize this and grant them access.
+
+---
+
+## 5. Important API Upgrades (Velo Standards)
+
+Please notify your development team that this V2 implementation **strictly uses modern Wix Velo APIs**. 
+
+We have completely removed all references to the deprecated `wix-users` and `wix-users-backend` modules. 
+- All frontend auth and member queries now use `wix-members-frontend` (e.g., `currentMember.getMember()`).
+- All backend entitlement and role assignments use `wix-members-backend` (e.g., `currentMember.getRoles()` and `authorization.assignRole()`).
+
+Ensure any future modifications to this codebase avoid deprecated `wix-users` imports to guarantee long-term stability and security.
