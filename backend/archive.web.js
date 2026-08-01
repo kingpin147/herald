@@ -1,7 +1,6 @@
 import { Permissions, webMethod } from "wix-web-module";
 import wixData from "wix-data";
 import { currentMember } from "wix-members-backend";
-import { orders } from "wix-pricing-plans-backend";
 import { logError } from "backend/logger.web";
 
 /**
@@ -80,29 +79,27 @@ export const getIssuePdfSecure = webMethod(
  * Checks whether the current member has an active subscription that
  * grants access to the issue archive (Level 3: Print/Digital and above).
  *
- * NOTE: Update the plan IDs below to match the actual Wix Pricing Plan IDs
- * for your Print/Digital tiers.
+ * NOTE: Adjust logic to check for specific custom plan IDs or plan properties.
  *
  * @returns {Promise<boolean>}
  */
 async function _checkArchiveAccess() {
   try {
-    const memberOrders = await orders.listCurrentMemberOrders();
+    const member = await currentMember.getMember();
+    if (!member) return false;
 
-    // Option A: Check for specific plan IDs that include archive access
-    // Uncomment and replace with actual plan IDs when known:
-    //
-    // const archivePlanIds = [
-    //   "YOUR_PRINT_DIGITAL_PLAN_ID_HERE",
-    //   "YOUR_ALL_ACCESS_PLAN_ID_HERE",
-    // ];
-    // return memberOrders.some(
-    //   (order) => archivePlanIds.includes(order.planId) && order.status === "ACTIVE"
-    // );
+    const now = new Date();
+    const activePlans = await wixData.query("MemberSubscriptions")
+        .eq("memberId", member._id)
+        .eq("status", "Active")
+        .ge("expiryDate", now)
+        .find();
+        
+    // Option A: Check for specific custom plan names or IDs that include archive access
+    // return activePlans.items.some(plan => plan.planName.includes("Digital") || plan.planName.includes("Print"));
 
-    // Option B (current default): Any active plan grants archive access.
-    // Replace with Option A once specific plan IDs are confirmed.
-    return memberOrders.some((order) => order.status === "ACTIVE");
+    // Option B (current default): Any active custom plan grants archive access.
+    return activePlans.items.length > 0;
   } catch (error) {
     console.error("Archive access check failed:", error);
     return false;

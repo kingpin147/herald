@@ -1,6 +1,7 @@
 import { currentMember, authentication } from "wix-members-frontend";
 import { getArticleSecure, getUserAccessTier } from "backend/herald.web";
 import wixWindow from "wix-window-frontend";
+import wixLocation from "wix-location";
 
 /**
  * Herald Dynamic Item Page
@@ -73,6 +74,13 @@ $w.onReady(async function () {
         return; // After login, the page will reload or we re-check
       }
 
+      // ─── Step 4.5: Redirect Expired Users ───────────────────────
+      if (accessTier.isExpired && item.premiumPlan) {
+        console.log("Herald Item Page: Subscription expired. Redirecting to purchase page.");
+        wixLocation.to("/subscribe"); // Placeholder for purchase page
+        return;
+      }
+
       // ─── Step 5: Fetch secure article (backend strips premium if needed)
       const secureArticle = await getArticleSecure(item._id);
 
@@ -98,7 +106,7 @@ $w.onReady(async function () {
  * Determines the user's access tier by calling the backend gateway.
  * Falls back to a local check if the backend call fails.
  *
- * @returns {Promise<{isLoggedIn: boolean, hasPremium: boolean}>}
+ * @returns {Promise<{isLoggedIn: boolean, hasPremium: boolean, isExpired: boolean}>}
  */
 async function _determineAccessTier() {
   try {
@@ -109,9 +117,9 @@ async function _determineAccessTier() {
     // Fallback: local check
     try {
       const member = await currentMember.getMember();
-      return { isLoggedIn: !!member, hasPremium: false };
+      return { isLoggedIn: !!member, hasPremium: false, isExpired: false };
     } catch (e) {
-      return { isLoggedIn: false, hasPremium: false };
+      return { isLoggedIn: false, hasPremium: false, isExpired: false };
     }
   }
 }

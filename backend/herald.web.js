@@ -1,7 +1,6 @@
 import { Permissions, webMethod } from "wix-web-module";
 import wixData from "wix-data";
 import { currentMember } from "wix-members-backend";
-import { orders } from "wix-pricing-plans-backend";
 import { logError } from "backend/logger.web";
 
 /**
@@ -104,7 +103,7 @@ export const getArticleSecure = webMethod(
  * Returns an object describing the user's access level so the frontend can
  * render the correct UI (registration wall, blur paywall, or full access).
  *
- * @returns {Promise<Object>} { isLoggedIn: boolean, hasPremium: boolean }
+ * @returns {Promise<Object>} { isLoggedIn: boolean, hasPremium: boolean, isExpired: boolean }
  */
 export const getUserAccessTier = webMethod(
   Permissions.Anyone,
@@ -112,6 +111,7 @@ export const getUserAccessTier = webMethod(
     try {
       let isLoggedIn = false;
       let hasPremium = false;
+      let isExpired = false;
 
       try {
         const member = await currentMember.getMember();
@@ -122,13 +122,16 @@ export const getUserAccessTier = webMethod(
 
       if (isLoggedIn) {
         hasPremium = await _checkActiveSubscription();
+        if (!hasPremium) {
+            isExpired = await _checkExpiredSubscription();
+        }
       }
 
-      return { isLoggedIn, hasPremium };
+      return { isLoggedIn, hasPremium, isExpired };
     } catch (error) {
       console.error("getUserAccessTier failed:", error);
       await logError("herald.web.getUserAccessTier", error);
-      return { isLoggedIn: false, hasPremium: false };
+      return { isLoggedIn: false, hasPremium: false, isExpired: false };
     }
   }
 );
@@ -143,10 +146,42 @@ export const getUserAccessTier = webMethod(
  */
 async function _checkActiveSubscription() {
   try {
-    const memberOrders = await orders.listCurrentMemberOrders();
-    return memberOrders.some((order) => order.status === "ACTIVE");
+    const member = await currentMember.getMember();
+    if (!member) return false;
+
+    const now = new Date();
+    const subscriptions = await wixData.query("MemberSubscriptions")
+        .eq("memberId", member._id)
+        .eq("status", "Active")
+        .ge("expiryDate", now)
+        .find();
+        
+    return subscriptions.items.length > 0;
   } catch (error) {
     console.error("Subscription check failed:", error);
+    return false;
+  }
+}
+
+/**
+ * Checks whether the currently authenticated member has an expired subscription
+ *
+ * @returns {Promise<boolean>}
+ */
+async function _checkExpiredSubscription() {
+  try {
+    const member = await currentMember.getMember();
+    if (!member) return false;
+
+    const now = new Date();
+    const subscriptions = await wixData.query("MemberSubscriptions")
+        .eq("memberId", member._id)
+        .lt("expiryDate", now)
+        .find();
+        
+    return subscriptions.items.length > 0;
+  } catch (error) {
+    console.error("Expired subscription check failed:", error);
     return false;
   }
 }

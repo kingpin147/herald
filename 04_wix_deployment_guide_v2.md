@@ -1,5 +1,11 @@
 # V2 Hybrid Architecture: Deployment Guide for Wix Studio
 
+> [!WARNING]
+> **ARCHITECTURE ROLLED BACK**
+> The V2 (HTML Iframe) architecture described in this deployment guide was **rejected** by the client due to severe SEO implications. 
+> The project has been rolled back to the **V1 Architecture (Wix Native Elements)** for all frontend rendering, while retaining the custom backend subscription logic (MemberSubscriptions) and Wix Pay APIs. This document is preserved for historical context only.
+
+
 This document provides a step-by-step guide for your Velo development team to deploy the new **V2 Hybrid Paywall Architecture** into the existing Wix Studio site.
 
 ## 1. Backend Services (Zero-Trust Entitlement)

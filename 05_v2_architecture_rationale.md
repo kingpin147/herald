@@ -1,5 +1,11 @@
 # Architectural Rationale: Why V2 is Superior to V1
 
+> [!WARNING]
+> **ARCHITECTURE ROLLED BACK**
+> The V2 (HTML Iframe) architecture described in this document was **rejected** by the client due to severe SEO implications. Search engine crawlers cannot reliably index content embedded inside iframes, which destroys the discoverability of the articles. 
+> The project has been rolled back to the **V1 Architecture (Wix Native Elements)** for all frontend rendering, while retaining the custom backend subscription logic (MemberSubscriptions) and Wix Pay APIs. This document is preserved for historical context only.
+
+
 When engineering a premium publishing platform, there is always a tension between **development speed** (relying on native website builders) and **bespoke capability** (writing custom software).
 
 The **V1 Blueprint** attempted to build the Herald entirely using Wix's native UI elements (Repeaters, Text Boxes, Datasets, and Lightboxes) paired with a custom CMS logic. While functional, it encountered severe aesthetic and structural limitations inherent to the Wix Studio platform. 
