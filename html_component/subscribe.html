@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Herald Membership & Subscriptions</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --c-navy-deep: #081220;
+      --c-navy: #0e1e38;
+      --c-navy-light: #162b4d;
+      --c-gold: #c5a059;
+      --c-gold-hover: #d4af37;
+      --c-gold-subtle: rgba(197, 160, 89, 0.15);
+      --c-gold-border: rgba(197, 160, 89, 0.35);
+      --c-text-primary: #ffffff;
+      --c-text-secondary: #a0aec0;
+      --c-text-muted: #718096;
+      --c-card-bg: rgba(14, 30, 56, 0.75);
+      --c-card-border: rgba(255, 255, 255, 0.08);
+      --c-card-featured-border: rgba(197, 160, 89, 0.6);
+      --c-surface: #0a172a;
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --font-heading: 'Cinzel', serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background-color: transparent;
+      font-family: var(--font-body);
+      color: var(--c-text-primary);
+      padding: 24px 16px;
+      overflow-x: hidden;
+    }
+
+    .wrapper {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* Active Subscription Banner */
+    .active-banner {
+      display: none;
+      background: linear-gradient(135deg, rgba(197, 160, 89, 0.18) 0%, rgba(14, 30, 56, 0.85) 100%);
+      border: 1px solid var(--c-gold-border);
+      border-radius: var(--radius-md);
+      padding: 16px 24px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      backdrop-filter: blur(10px);
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .active-banner.visible {
+      display: flex;
+    }
+
+    .active-banner-info {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .active-banner-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--c-gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--c-navy-deep);
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .active-banner-text h4 {
+      font-family: var(--font-heading);
+      font-size: 15px;
+      color: var(--c-gold-hover);
+      letter-spacing: 0.5px;
+    }
+
+    .active-banner-text p {
+      font-size: 13px;
+      color: var(--c-text-secondary);
+      margin-top: 2px;
+    }
+
+    /* Header Section */
+    .header-section {
+      text-align: center;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .header-tag {
+      font-family: var(--font-heading);
+      font-size: 12px;
+      letter-spacing: 3px;
+      color: var(--c-gold);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      display: inline-block;
+    }
+
+    .header-title {
+      font-family: var(--font-heading);
+      font-size: 32px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1.25;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .header-subtitle {
+      font-size: 15px;
+      color: var(--c-text-secondary);
+      line-height: 1.6;
+    }
+
+    /* Plans Grid */
+    .plans-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    /* Plan Card */
+    .plan-card {
+      position: relative;
+      background: var(--c-card-bg);
+      border: 1px solid var(--c-card-border);
+      border-radius: var(--radius-lg);
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      backdrop-filter: blur(12px);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .plan-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(197, 160, 89, 0.4);
+      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .plan-card.featured {
+      border-color: var(--c-card-featured-border);
+      background: linear-gradient(180deg, rgba(22, 43, 77, 0.85) 0%, rgba(14, 30, 56, 0.9) 100%);
+      box-shadow: 0 12px 30px rgba(197, 160, 89, 0.12);
+    }
+
+    .plan-badge {
+      position: absolute;
+      top: -12px;
+      right: 24px;
+      background: var(--c-gold);
+      color: var(--c-navy-deep);
+      font-family: var(--font-heading);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 4px 12px;
+      border-radius: 20px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .plan-header {
+      margin-bottom: 20px;
+    }
+
+    .plan-title {
+      font-family: var(--font-heading);
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .plan-description {
+      font-size: 13px;
+      color: var(--c-text-secondary);
+      line-height: 1.5;
+      min-height: 38px;
+    }
+
+    .plan-price-container {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin: 20px 0 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .plan-currency {
+      font-family: var(--font-heading);
+      font-size: 24px;
+      color: var(--c-gold);
+      font-weight: 600;
+    }
+
+    .plan-price {
+      font-family: var(--font-heading);
+      font-size: 42px;
+      font-weight: 700;
+      color: #ffffff;
+      line-height: 1;
+    }
+
+    .plan-period {
+      font-size: 13px;
+      color: var(--c-text-muted);
+    }
+
+    /* Features List */
+    .plan-features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 32px;
+      flex-grow: 1;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13.5px;
+      color: #d1d5db;
+      line-height: 1.45;
+    }
+
+    .feature-icon {
+      color: var(--c-gold);
+      flex-shrink: 0;
+      margin-top: 2px;
+      width: 16px;
+      height: 16px;
+    }
+
+    /* CTA Button */
+    .plan-btn {
+      width: 100%;
+      padding: 14px 20px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-heading);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.25s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--c-gold);
+      color: var(--c-navy-deep);
+    }
+
+    .plan-btn:hover {
+      background: var(--c-gold-hover);
+      transform: scale(1.01);
+      box-shadow: 0 6px 20px rgba(197, 160, 89, 0.35);
+    }
+
+    .plan-btn.secondary {
+      background: transparent;
+      border-color: var(--c-gold);
+      color: var(--c-gold);
+    }
+
+    .plan-btn.secondary:hover {
+      background: var(--c-gold-subtle);
+      color: #ffffff;
+      border-color: var(--c-gold-hover);
+    }
+
+    .plan-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* White Glove / B2B Section */
+    .b2b-section {
+      background: linear-gradient(135deg, rgba(14, 30, 56, 0.6) 0%, rgba(8, 18, 32, 0.8) 100%);
+      border: 1px solid var(--c-card-border);
+      border-radius: var(--radius-lg);
+      padding: 32px 36px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .b2b-content h3 {
+      font-family: var(--font-heading);
+      font-size: 20px;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .b2b-content p {
+      font-size: 13.5px;
+      color: var(--c-text-secondary);
+      max-width: 580px;
+      line-height: 1.5;
+    }
+
+    .b2b-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .b2b-btn {
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-heading);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      border: 1px solid var(--c-gold-border);
+      background: rgba(197, 160, 89, 0.08);
+      color: var(--c-gold);
+      transition: all 0.2s ease;
+    }
+
+    .b2b-btn:hover {
+      background: var(--c-gold);
+      color: var(--c-navy-deep);
+    }
+
+    /* Spinner */
+    .spinner {
+      display: none;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      border-top-color: var(--c-navy-deep);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loading .spinner {
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+      .header-title { font-size: 26px; }
+      .plans-grid { grid-template-columns: 1fr; }
+      .b2b-section { flex-direction: column; text-align: center; }
+      .b2b-actions { justify-content: center; width: 100%; }
+      .b2b-btn { width: 100%; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wrapper">
+    <!-- Active Status Banner -->
+    <div id="activeBanner" class="active-banner">
+      <div class="active-banner-info">
+        <div class="active-banner-icon">✓</div>
+        <div class="active-banner-text">
+          <h4 id="activePlanTitle">Active Membership</h4>
+          <p id="activePlanExpiry">You have active access to the Herald digital edition.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header Section -->
+    <div class="header-section">
+      <span class="header-tag">Membership & Subscriptions</span>
+      <h1 class="header-title">The Classic Planning Herald</h1>
+      <p class="header-subtitle">
+        Join architects, urbanists, and civic leaders worldwide. Unlock full access to long-form scholarly essays, exclusive issues, and archival research.
+      </p>
+    </div>
+
+    <!-- Dynamic Plans Grid -->
+    <div id="plansGrid" class="plans-grid">
+      <!-- Plan cards will be dynamically injected here via postMessage -->
+    </div>
+
+    <!-- White-Glove / Concierge Section -->
+    <div class="b2b-section">
+      <div class="b2b-content">
+        <h3>Academic & Corporate Access</h3>
+        <p>We provide institutional site-wide licenses, university student subscriptions, and corporate multi-seat packages tailored to your organization.</p>
+      </div>
+      <div class="b2b-actions">
+        <button class="b2b-btn" onclick="sendAction('OPEN_LIGHTBOX', { lightboxName: 'Corporate_Inquiry_Form' })">Corporate Inquiry</button>
+        <button class="b2b-btn" onclick="sendAction('OPEN_LIGHTBOX', { lightboxName: 'Submit_Academic_Credentials' })">Academic Access</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // SVG Checkmark Icon
+    const CHECK_ICON = `<svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+
+    // State
+    let currentPlans = [];
+    let activeSubscription = null;
+
+    // Send action back to Wix Velo Page
+    function sendAction(type, payload = {}) {
+      window.parent.postMessage({ type: type, ...payload }, "*");
+    }
+
+    function handleSubscribe(planId, btnElement) {
+      if (btnElement) {
+        btnElement.classList.add("loading");
+        btnElement.disabled = true;
+      }
+      sendAction("SUBSCRIBE_CLICK", { planId: planId });
+    }
+
+    // Render Plans Grid
+    function renderPlans(plans) {
+      const grid = document.getElementById("plansGrid");
+      grid.innerHTML = "";
+
+      if (!plans || plans.length === 0) {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--c-text-muted); padding: 40px;">No subscription plans available at this time.</div>`;
+        return;
+      }
+
+      plans.forEach((plan, index) => {
+        const isFeatured = !!plan.isFeatured || (index === 1 && plans.length > 1);
+        const card = document.createElement("div");
+        card.className = `plan-card ${isFeatured ? 'featured' : ''}`;
+
+        const badgeHtml = plan.badgeText 
+          ? `<div class="plan-badge">${plan.badgeText}</div>`
+          : (isFeatured ? `<div class="plan-badge">RECOMMENDED</div>` : "");
+
+        const featuresList = (plan.features || []).map(f => `
+          <li class="feature-item">
+            ${CHECK_ICON}
+            <span>${f}</span>
+          </li>
+        `).join("");
+
+        const currencySymbol = plan.currency === "USD" ? "$" : (plan.currency || "$");
+        const price = plan.price !== undefined ? plan.price : 0;
+        const ctaText = plan.ctaText || "Subscribe Now";
+
+        card.innerHTML = `
+          ${badgeHtml}
+          <div>
+            <div class="plan-header">
+              <h2 class="plan-title">${plan.planName}</h2>
+              <p class="plan-description">${plan.description || ""}</p>
+            </div>
+
+            <div class="plan-price-container">
+              <span class="plan-currency">${currencySymbol}</span>
+              <span class="plan-price">${price}</span>
+              <span class="plan-period">/ year</span>
+            </div>
+
+            <ul class="plan-features">
+              ${featuresList}
+            </ul>
+          </div>
+
+          <button id="btn_${plan.planId}" class="plan-btn ${isFeatured ? '' : 'secondary'}" onclick="handleSubscribe('${plan.planId}', this)">
+            <span class="btn-text">${ctaText}</span>
+            <span class="spinner"></span>
+          </button>
+        `;
+
+        grid.appendChild(card);
+      });
+    }
+
+    // Render Active Member Banner
+    function renderMemberStatus(status) {
+      const banner = document.getElementById("activeBanner");
+      if (status && status.isLoggedIn && status.hasActiveSubscription && status.activeSubscription) {
+        const sub = status.activeSubscription;
+        document.getElementById("activePlanTitle").textContent = `Active Membership: ${sub.planName}`;
+        document.getElementById("activePlanExpiry").textContent = `Your access is active (${sub.remainingDays} days remaining).`;
+        banner.classList.add("visible");
+      } else {
+        banner.classList.remove("visible");
+      }
+    }
+
+    // Listen for messages from Velo host
+    window.addEventListener("message", (event) => {
+      const data = event.data;
+      if (!data || !data.type) return;
+
+      switch (data.type) {
+        case "INIT_DATA":
+          if (data.plans) {
+            currentPlans = data.plans;
+            renderPlans(data.plans);
+          }
+          if (data.memberStatus) {
+            activeSubscription = data.memberStatus;
+            renderMemberStatus(data.memberStatus);
+          }
+          break;
+
+        case "SET_PLANS":
+          if (data.plans) {
+            currentPlans = data.plans;
+            renderPlans(data.plans);
+          }
+          break;
+
+        case "SET_MEMBER_STATUS":
+          renderMemberStatus(data.memberStatus);
+          break;
+
+        case "SET_LOADING":
+          if (data.planId) {
+            const btn = document.getElementById(`btn_${data.planId}`);
+            if (btn) {
+              if (data.loading) {
+                btn.classList.add("loading");
+                btn.disabled = true;
+              } else {
+                btn.classList.remove("loading");
+                btn.disabled = false;
+              }
+            }
+          }
+          break;
+
+        case "PAYMENT_SUCCESS":
+          // Reset all buttons
+          document.querySelectorAll(".plan-btn").forEach(b => {
+            b.classList.remove("loading");
+            b.disabled = false;
+          });
+          break;
+      }
+    });
+
+    // Notify Velo that iframe is ready
+    window.onload = () => {
+      sendAction("IFRAME_READY");
+    };
+  </script>
+</body>
+</html>

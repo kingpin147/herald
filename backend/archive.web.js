@@ -89,16 +89,30 @@ async function _checkArchiveAccess() {
     if (!member) return false;
 
     const now = new Date();
+
+    // Check primary collection: SubscriptionUserData
+    try {
+      const res = await wixData.query("SubscriptionUserData")
+        .eq("memberId", member._id)
+        .find({ suppressAuth: true });
+
+      const hasActive = res.items.some(item => {
+        if (item.status && item.status.toLowerCase() === "cancelled") return false;
+        if (item.expiryDate) return new Date(item.expiryDate) >= now;
+        const purchaseDate = item.purchaseDateAndTime ? new Date(item.purchaseDateAndTime) : new Date(item._createdDate);
+        return new Date(purchaseDate.getTime() + (365 * 24 * 60 * 60 * 1000)) >= now;
+      });
+
+      if (hasActive) return true;
+    } catch (e) { /* Fallback */ }
+
+    // Fallback: MemberSubscriptions
     const activePlans = await wixData.query("MemberSubscriptions")
         .eq("memberId", member._id)
         .eq("status", "Active")
         .ge("expiryDate", now)
-        .find();
+        .find({ suppressAuth: true });
         
-    // Option A: Check for specific custom plan names or IDs that include archive access
-    // return activePlans.items.some(plan => plan.planName.includes("Digital") || plan.planName.includes("Print"));
-
-    // Option B (current default): Any active custom plan grants archive access.
     return activePlans.items.length > 0;
   } catch (error) {
     console.error("Archive access check failed:", error);
