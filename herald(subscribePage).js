@@ -58,7 +58,17 @@ $w.onReady(function () {
     console.error("Herald Subscribe Page: #htmlComponent1 not found on page:", e);
   }
 
-  // 2. Initial state push in case iframe loaded before onReady
+  // 2. Listen for auth changes (e.g. member logs in)
+  try {
+    authentication.onLogin(async () => {
+      console.log("Herald Subscribe Page: Member logged in event detected, updating data...");
+      await _sendInitialDataToIframe();
+    });
+  } catch (e) {
+    // Ignore in environments where onLogin is unsupported
+  }
+
+  // 3. Initial state push in case iframe loaded before onReady
   _sendInitialDataToIframe();
 });
 
@@ -102,35 +112,46 @@ async function _sendInitialDataToIframe() {
  */
 async function _handleSubscribeClick(planId) {
   try {
-    // 1. Strict authentication check: verify member is logged in
-    let member = null;
-    try {
-      member = await currentMember.getMember();
-    } catch (e) {
-      member = null;
-    }
-
-    if (!member) {
+    // 1. Check if user is logged in using Wix Members authentication
+    if (!authentication.loggedIn()) {
       console.log("Herald Subscribe Page: Guest user clicked subscribe. Launching native login prompt...");
       try {
-        await authentication.promptLogin({ mode: "signup" });
-        member = await currentMember.getMember();
+        await authentication.promptLogin({ mode: "login", modal: true });
       } catch (loginErr) {
-        console.log("Herald Subscribe Page: Login prompt closed or cancelled.");
+        console.log("Herald Subscribe Page: Login prompt closed or cancelled by user.");
         _setIframeLoading(planId, false);
         return;
       }
 
-      if (!member) {
-        console.warn("Herald Subscribe Page: User still not authenticated.");
+      // Re-verify login status after prompt
+      if (!authentication.loggedIn()) {
+        console.warn("Herald Subscribe Page: User still not authenticated after prompt.");
         _setIframeLoading(planId, false);
         return;
       }
+
+      // Refresh iframe with updated member status
+      await _sendInitialDataToIframe();
     }
 
     // 2. Request backend to create a secure payment session
     console.log(`Herald Subscribe Page: Requesting payment session for plan '${planId}'...`);
-    const paymentRes = await createSubscriptionPayment(planId);
+    let paymentRes = await createSubscriptionPayment(planId);
+
+    // Fallback: If backend still flags unauthenticated due to cookie sync latency, prompt login and retry once
+    if (!paymentRes.success && paymentRes.error && paymentRes.error.toLowerCase().includes("authentication required")) {
+      console.log("Herald Subscribe Page: Backend reported unauthenticated session, triggering promptLogin...");
+      try {
+        await authentication.promptLogin({ mode: "login", modal: true });
+        if (authentication.loggedIn()) {
+          await _sendInitialDataToIframe();
+          paymentRes = await createSubscriptionPayment(planId);
+        }
+      } catch (err) {
+        _setIframeLoading(planId, false);
+        return;
+      }
+    }
 
     if (!paymentRes.success || !paymentRes.paymentId) {
       console.error("Herald Subscribe Page: Payment creation failed:", paymentRes.error);
