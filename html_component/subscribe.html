@@ -499,8 +499,99 @@
     // SVG Checkmark Icon
     const CHECK_ICON = `<svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
 
+    // Default Fallback Plans (Matching Wix CMS SubscriptionsPlan Collection)
+    const DEFAULT_PLANS = [
+      {
+        planId: "free_tier",
+        planName: "Free Tier",
+        price: 0,
+        rawPrice: "€0",
+        periodText: "Free",
+        currency: "€",
+        subscriptionType: "Free",
+        description: "High-quality hook articles, public research summaries, and newsletter updates.",
+        features: [
+          "High-quality hook articles",
+          "Public research summaries",
+          "Weekly newsletter updates"
+        ],
+        ctaText: "Get Started Free",
+        isFeatured: false
+      },
+      {
+        planId: "single_issue_digital",
+        planName: "Single Issue (Digital)",
+        price: 40,
+        rawPrice: "$40 / edition",
+        periodText: "/ edition",
+        currency: "$",
+        subscriptionType: "Single",
+        description: "Full digital access to a single premium edition of The Herald.",
+        features: [
+          "Full digital access to a single premium edition",
+          "Instant digital reader & PDF access",
+          "Archived treatises in chosen edition"
+        ],
+        ctaText: "Purchase Digital Issue",
+        isFeatured: false
+      },
+      {
+        planId: "single_issue_print",
+        planName: "Single Issue (Print)",
+        price: 65,
+        rawPrice: "$65 / edition",
+        periodText: "/ edition",
+        currency: "$",
+        subscriptionType: "Single",
+        description: "Standalone physical print copy.",
+        features: [
+          "Standalone physical print copy",
+          "Delivered worldwide to your doorstep",
+          "Archival heavy stock printing"
+        ],
+        ctaText: "Order Print Copy",
+        isFeatured: false
+      },
+      {
+        planId: "individual_all_access",
+        planName: "Individual All-Access",
+        price: 150,
+        rawPrice: "$150 / year",
+        periodText: "/ year",
+        currency: "$",
+        subscriptionType: "Annual",
+        description: "Unlimited digital access to all premium content and historical treatises.",
+        features: [
+          "Unlimited digital access to all premium content",
+          "Complete historical treatises & archives",
+          "Ad-free editorial reading experience"
+        ],
+        ctaText: "Subscribe Now",
+        isFeatured: false
+      },
+      {
+        planId: "print_collector",
+        planName: "Print Collector",
+        price: 500,
+        rawPrice: "$500 / year",
+        periodText: "/ year",
+        currency: "$",
+        subscriptionType: "Annual",
+        description: "Full digital access plus premium, physical semi-annual collector journals.",
+        features: [
+          "Full digital access to entire archive",
+          "Physical semi-annual collector journals",
+          "Deluxe archival binding & case",
+          "Symposium & salon invitations"
+        ],
+        badgeText: "RECOMMENDED",
+        ctaText: "Become a Collector",
+        isFeatured: true
+      }
+    ];
+
     // State
-    let currentPlans = [];
+    let currentPlans = [...DEFAULT_PLANS];
     let activeSubscription = null;
 
     // Send action back to Wix Velo Page
@@ -509,6 +600,16 @@
     }
 
     function handleSubscribe(planId, btnElement) {
+      // If corporate or academic inquiry, route to lightbox
+      if (planId === "corporate_group" || planId === "Corporate / Group") {
+        sendAction("OPEN_LIGHTBOX", { lightboxName: "Corporate_Inquiry_Form" });
+        return;
+      }
+      if (planId === "education_rates" || planId === "Education Rates") {
+        sendAction("OPEN_LIGHTBOX", { lightboxName: "Submit_Academic_Credentials" });
+        return;
+      }
+
       if (btnElement) {
         btnElement.classList.add("loading");
         btnElement.disabled = true;
@@ -537,12 +638,8 @@
       const grid = document.getElementById("plansGrid");
       grid.innerHTML = "";
 
-      if (!plans || plans.length === 0) {
-        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--c-text-muted); padding: 40px;">No subscription plans available at this time.</div>`;
-        return;
-      }
-
-      const sortedPlans = _sortPlans(plans);
+      const activePlansList = (plans && plans.length > 0) ? plans : DEFAULT_PLANS;
+      const sortedPlans = _sortPlans(activePlansList);
 
       sortedPlans.forEach((plan) => {
         const isFeatured = !!plan.isFeatured;
@@ -553,7 +650,17 @@
           ? `<div class="plan-badge">${plan.badgeText}</div>`
           : (isFeatured ? `<div class="plan-badge">RECOMMENDED</div>` : "");
 
-        const featuresList = (plan.features || []).map(f => `
+        const descriptionText = plan.description || plan.inclusionsAccessScope || "";
+
+        // Build feature items
+        let features = plan.features || [];
+        if (!features || features.length === 0) {
+          if (descriptionText) {
+            features = [descriptionText];
+          }
+        }
+
+        const featuresList = features.map(f => `
           <li class="feature-item">
             ${CHECK_ICON}
             <span>${f}</span>
@@ -570,7 +677,7 @@
           <div>
             <div class="plan-header">
               <h2 class="plan-title">${plan.planName}</h2>
-              <p class="plan-description">${plan.description || ""}</p>
+              <p class="plan-description">${descriptionText}</p>
             </div>
 
             <div class="plan-price-container">
@@ -614,9 +721,11 @@
 
       switch (data.type) {
         case "INIT_DATA":
-          if (data.plans) {
+          if (data.plans && data.plans.length > 0) {
             currentPlans = data.plans;
             renderPlans(data.plans);
+          } else {
+            renderPlans(DEFAULT_PLANS);
           }
           if (data.memberStatus) {
             activeSubscription = data.memberStatus;
@@ -625,7 +734,7 @@
           break;
 
         case "SET_PLANS":
-          if (data.plans) {
+          if (data.plans && data.plans.length > 0) {
             currentPlans = data.plans;
             renderPlans(data.plans);
           }
@@ -660,8 +769,9 @@
       }
     });
 
-    // Notify Velo that iframe is ready
+    // Initialize with default plans on load and request live data from Velo
     window.onload = () => {
+      renderPlans(DEFAULT_PLANS);
       sendAction("IFRAME_READY");
     };
   </script>

@@ -93,10 +93,31 @@ export const getPricingPlans = webMethod(
         const rawPrice = plan.pricing !== undefined ? plan.pricing : (plan.price !== undefined ? plan.price : "");
         const numPrice = _parseNumericPrice(rawPrice);
         const planId = plan.planId || plan._id || planName;
-        const inclusions = plan.inclusionsAndAccessScope || plan.inclusions || plan.features || "";
-        const featuresArray = Array.isArray(inclusions) 
-          ? inclusions 
-          : (typeof inclusions === "string" ? inclusions.split("\n").filter(Boolean) : []);
+        
+        // Support all variations of the CMS field name for "Inclusions & Access Scope"
+        const inclusions = plan.inclusionsAccessScope 
+          || plan.inclusionsAndAccessScope 
+          || plan.inclusions_access_scope 
+          || plan.inclusions 
+          || plan.inclusionsScope 
+          || plan.accessScope 
+          || plan.description 
+          || plan.features 
+          || plan["Inclusions & Access Scope"]
+          || "";
+
+        const inclusionsText = typeof inclusions === "string" ? inclusions.trim() : (Array.isArray(inclusions) ? inclusions.join("\n") : "");
+        
+        let featuresArray = [];
+        if (Array.isArray(inclusions)) {
+          featuresArray = inclusions;
+        } else if (inclusionsText.includes("\n")) {
+          featuresArray = inclusionsText.split("\n").map(s => s.trim()).filter(Boolean);
+        } else if (inclusionsText.includes("•")) {
+          featuresArray = inclusionsText.split("•").map(s => s.trim()).filter(Boolean);
+        } else if (inclusionsText) {
+          featuresArray = [inclusionsText];
+        }
         
         const rawPriceStr = String(rawPrice).toLowerCase();
         const subType = plan.subscriptionType || (rawPriceStr.includes("edition") ? "Single" : (numPrice === 0 ? "Free" : "Annual"));
@@ -115,7 +136,8 @@ export const getPricingPlans = webMethod(
           currency: plan.currency || (String(rawPrice).includes("€") ? "€" : "$"),
           durationDays: plan.durationDays || (subType === "Single" ? 30 : 365),
           subscriptionType: subType,
-          description: (typeof inclusions === "string" && inclusions.length > 0 && !inclusions.includes("\n")) ? inclusions : (plan.description || subType),
+          description: inclusionsText || plan.description || subType,
+          inclusionsAccessScope: inclusionsText,
           features: featuresArray,
           technicalRouting: plan.technicalRouting || "",
           fulfillmentAutomation: plan.fulfillmentAutomation || "",
