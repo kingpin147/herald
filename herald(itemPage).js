@@ -15,25 +15,18 @@ import wixLocation from "wix-location";
  *     One #richContentViewer element populated programmatically with
  *     either truncated hookContent or full premiumContent from the backend.
  *
- *  3. PAYWALL (#planUi)
- *     Free registered users see the truncated content (300 words from backend)
- *     with the #planUi subscription banner box expanded.
- *
- *  4. ZERO-TRUST BACKEND (Section 4.3)
+ *  3. ZERO-TRUST BACKEND (Section 4.3)
  *     Premium content is NEVER sent to the client for non-subscribers.
  *     The backend gateway (backend/herald.web.js) strips it and returns null.
  *
- *  5. PREMIUM EXPERIENCE (Section 4.4)
- *     Paid subscribers see the full article with no banner,
- *     and the image gallery expanded.
+ *  4. ACCESS CONTROL (Section 4.4)
+ *     Subscribers receive the full premium content; free users receive the preview.
  *
  * Wix Editor Prerequisites:
  *  - A Dataset element (#dynamicDataset) bound to HeraldArticles.
  *  - Text elements: #title, #authorName
  *  - Image element: #bannerImage
  *  - RichContentViewer: #richContentViewer (unbound in Editor)
- *  - Container/Box: #planUi (subscription banner, initially collapsed)
- *  - Gallery element: #imagesGallery
  */
 
 $w.onReady(async function () {
@@ -188,8 +181,6 @@ function _populateCommonUI(item) {
 /**
  * Renders the experience for free registered users (Level 0):
  *  - Shows the content preview via #richContentViewer
- *  - Expands the #planUi box (subscription banner)
- *  - Collapses the image gallery
  *
  * @param {Object} item - The current dataset item.
  * @param {Object} secureArticle - The secure article object from backend.
@@ -212,21 +203,6 @@ function _renderFreeExperience(item, secureArticle) {
   } catch (e) {
     console.warn("Herald Item Page: #richContentViewer failed:", e.message || e);
   }
-
-  // Expand the plan UI box (subscription banner)
-  try {
-    $w("#planUi").expand();
-    console.log("Herald Item Page: #planUi expanded.");
-  } catch (e) {
-    console.warn("Herald Item Page: #planUi expand failed:", e.message || e);
-  }
-
-  // Collapse the image gallery for free users
-  try {
-    $w("#imagesGallery").collapse();
-  } catch (e) {
-    console.warn("Herald Item Page: #imagesGallery does not exist:", e);
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -236,8 +212,6 @@ function _renderFreeExperience(item, secureArticle) {
 /**
  * Renders the experience for paid subscribers:
  *  - Shows the full article via #richContentViewer
- *  - Collapses the #planUi box
- *  - Shows the image gallery
  *
  * @param {Object} item - The current dataset item.
  * @param {Object} secureArticle - The article object from the backend.
@@ -255,30 +229,6 @@ function _renderPremiumExperience(item, secureArticle) {
   } catch (e) {
     console.warn("Herald Item Page: #richContentViewer failed:", e);
   }
-
-  // Collapse the plan UI box — no banner for subscribers
-  try {
-    $w("#planUi").collapse();
-  } catch (e) {
-    console.warn("Herald Item Page: #planUi does not exist:", e);
-  }
-
-  // Show the image gallery (database uses imagesGallery)
-  try {
-    if (item.imagesGallery && item.imagesGallery.length > 0) {
-      $w("#imagesGallery").items = item.imagesGallery.map((img) => ({
-        type: "image",
-        src: img.src,
-        title: img.title || "",
-        description: img.description || "",
-      }));
-      $w("#imagesGallery").expand();
-    } else {
-      $w("#imagesGallery").collapse();
-    }
-  } catch (e) {
-    console.warn("Herald Item Page: #imagesGallery failed:", e);
-  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -291,6 +241,4 @@ function _renderPremiumExperience(item, secureArticle) {
  */
 function _collapseAllContent() {
   try { $w("#richContentViewer").collapse(); } catch (e) { /* element may not exist */ }
-  try { $w("#planUi").collapse(); } catch (e) { /* element may not exist */ }
-  try { $w("#imagesGallery").collapse(); } catch (e) { /* element may not exist */ }
 }

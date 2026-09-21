@@ -20,10 +20,24 @@ import { getPricingPlans, createSubscriptionPayment, getMemberSubscriptionDetail
  * - Paste the content of html_component/subscribe.html into the component code box.
  */
 
-$w.onReady(function () {
+$w.onReady(async function () {
   console.log("Herald Subscribe Page: Initializing HTML Component bridge...");
 
-  // 1. Setup bidirectional message listener with HTML component
+  // 1. Skip auth prompt in Editor / Preview mode
+  const currentViewMode = wixWindow.viewMode;
+  if (currentViewMode !== "Editor" && currentViewMode !== "Preview") {
+    // Check if user is logged in immediately on page entry
+    if (!authentication.loggedIn()) {
+      console.log("Herald Subscribe Page: Guest visitor detected on page load, prompting login...");
+      try {
+        await authentication.promptLogin({ mode: "login", modal: true });
+      } catch (err) {
+        console.log("Herald Subscribe Page: Entry login prompt closed/cancelled by user.");
+      }
+    }
+  }
+
+  // 2. Setup bidirectional message listener with HTML component
   try {
     $w("#htmlComponent1").onMessage(async (event) => {
       const data = event.data;
@@ -58,7 +72,7 @@ $w.onReady(function () {
     console.error("Herald Subscribe Page: #htmlComponent1 not found on page:", e);
   }
 
-  // 2. Listen for auth changes (e.g. member logs in)
+  // 3. Listen for auth changes (e.g. member logs in)
   try {
     authentication.onLogin(async () => {
       console.log("Herald Subscribe Page: Member logged in event detected, updating data...");
@@ -68,7 +82,7 @@ $w.onReady(function () {
     // Ignore in environments where onLogin is unsupported
   }
 
-  // 3. Initial state push in case iframe loaded before onReady
+  // 4. Initial state push in case iframe loaded before onReady
   _sendInitialDataToIframe();
 });
 
@@ -161,9 +175,7 @@ async function _handleSubscribeClick(planId) {
 
     // 3. Launch native Wix Pay Modal
     console.log("Herald Subscribe Page: Opening Wix Pay checkout modal...");
-    const paymentResult = await wixPayFrontend.startPayment(paymentRes.paymentId, {
-      termsAndConditionsCheckboxRequired: false
-    });
+    const paymentResult = await wixPayFrontend.startPayment(paymentRes.paymentId);
 
     console.log("Herald Subscribe Page: Wix Pay completed with status:", paymentResult.status);
 

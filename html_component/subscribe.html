@@ -6,28 +6,40 @@
   <title>Herald Membership & Subscriptions</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&family=Montserrat:wght@200;300;400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
       --c-navy-deep: #081220;
-      --c-navy: #0e1e38;
+      --c-navy: #0c1d38;
       --c-navy-light: #162b4d;
       --c-gold: #c5a059;
-      --c-gold-hover: #d4af37;
-      --c-gold-subtle: rgba(197, 160, 89, 0.15);
-      --c-gold-border: rgba(197, 160, 89, 0.35);
-      --c-text-primary: #ffffff;
-      --c-text-secondary: #a0aec0;
+      --c-gold-hover: #b89047;
+      --c-gold-subtle: rgba(197, 160, 89, 0.12);
+      --c-gold-border: rgba(197, 160, 89, 0.45);
+      
+      /* Light background harmonized tokens */
+      --c-text-primary: #0c1d38;
+      --c-text-secondary: #4a5568;
       --c-text-muted: #718096;
-      --c-card-bg: rgba(14, 30, 56, 0.75);
-      --c-card-border: rgba(255, 255, 255, 0.08);
-      --c-card-featured-border: rgba(197, 160, 89, 0.6);
-      --c-surface: #0a172a;
-      --radius-sm: 6px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --font-heading: 'Cinzel', serif;
-      --font-body: 'Plus Jakarta Sans', sans-serif;
+      
+      /* Standard Cards */
+      --c-card-bg: #ffffff;
+      --c-card-border: rgba(12, 29, 56, 0.12);
+      --c-card-shadow: 0 8px 24px rgba(12, 29, 56, 0.06);
+      
+      /* Featured Card (Navy Standout matching header) */
+      --c-featured-bg: #0c1d38;
+      --c-featured-border: #c5a059;
+      --c-featured-text-primary: #ffffff;
+      --c-featured-text-secondary: #cbd5e1;
+      --c-featured-text-muted: #94a3b8;
+      --c-featured-shadow: 0 16px 36px rgba(12, 29, 56, 0.22);
+      
+      --radius-sm: 4px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
+      --font-heading: 'Cormorant Garamond', 'Garamond', 'Georgia', serif;
+      --font-body: 'Avenir Light', 'Avenir', 'Avenir Next', 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
     }
 
     * {
@@ -40,6 +52,7 @@
     body {
       background-color: transparent;
       font-family: var(--font-body);
+      font-weight: 300;
       color: var(--c-text-primary);
       padding: 24px 16px;
       overflow-x: hidden;
@@ -56,14 +69,14 @@
     /* Active Subscription Banner */
     .active-banner {
       display: none;
-      background: linear-gradient(135deg, rgba(197, 160, 89, 0.18) 0%, rgba(14, 30, 56, 0.85) 100%);
+      background: linear-gradient(135deg, rgba(197, 160, 89, 0.15) 0%, #ffffff 100%);
       border: 1px solid var(--c-gold-border);
       border-radius: var(--radius-md);
       padding: 16px 24px;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 16px rgba(12, 29, 56, 0.06);
       animation: fadeIn 0.4s ease-out;
     }
 
@@ -85,20 +98,22 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--c-navy-deep);
+      color: #ffffff;
       font-weight: 700;
       font-size: 18px;
     }
 
     .active-banner-text h4 {
       font-family: var(--font-heading);
-      font-size: 15px;
-      color: var(--c-gold-hover);
+      font-size: 18px;
+      color: var(--c-navy);
       letter-spacing: 0.5px;
+      font-weight: 600;
     }
 
     .active-banner-text p {
       font-size: 13px;
+      font-weight: 300;
       color: var(--c-text-secondary);
       margin-top: 2px;
     }
@@ -106,34 +121,27 @@
     /* Header Section */
     .header-section {
       text-align: center;
-      max-width: 720px;
+      max-width: 800px;
       margin: 0 auto;
-    }
-
-    .header-tag {
-      font-family: var(--font-heading);
-      font-size: 12px;
-      letter-spacing: 3px;
-      color: var(--c-gold);
-      text-transform: uppercase;
-      margin-bottom: 8px;
-      display: inline-block;
     }
 
     .header-title {
       font-family: var(--font-heading);
-      font-size: 32px;
-      font-weight: 700;
-      color: #ffffff;
-      line-height: 1.25;
-      margin-bottom: 12px;
-      letter-spacing: 0.5px;
+      font-size: 44px;
+      font-weight: 400;
+      color: var(--c-navy);
+      line-height: 1.2;
+      margin-bottom: 14px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
     }
 
     .header-subtitle {
-      font-size: 15px;
+      font-size: 14.5px;
+      font-weight: 300;
       color: var(--c-text-secondary);
       line-height: 1.6;
+      letter-spacing: 0.3px;
     }
 
     /* Plans Grid */
@@ -144,7 +152,7 @@
       align-items: stretch;
     }
 
-    /* Plan Card */
+    /* Standard Plan Card */
     .plan-card {
       position: relative;
       background: var(--c-card-bg);
@@ -154,20 +162,25 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      backdrop-filter: blur(12px);
+      box-shadow: var(--c-card-shadow);
       transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .plan-card:hover {
       transform: translateY(-4px);
-      border-color: rgba(197, 160, 89, 0.4);
-      box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+      border-color: rgba(197, 160, 89, 0.6);
+      box-shadow: 0 16px 32px rgba(12, 29, 56, 0.12);
     }
 
+    /* Featured Plan Card (Navy Standout) */
     .plan-card.featured {
-      border-color: var(--c-card-featured-border);
-      background: linear-gradient(180deg, rgba(22, 43, 77, 0.85) 0%, rgba(14, 30, 56, 0.9) 100%);
-      box-shadow: 0 12px 30px rgba(197, 160, 89, 0.12);
+      background: var(--c-featured-bg);
+      border: 2px solid var(--c-featured-border);
+      box-shadow: var(--c-featured-shadow);
+    }
+
+    .plan-card.featured:hover {
+      box-shadow: 0 20px 40px rgba(12, 29, 56, 0.3);
     }
 
     .plan-badge {
@@ -175,15 +188,15 @@
       top: -12px;
       right: 24px;
       background: var(--c-gold);
-      color: var(--c-navy-deep);
+      color: #0c1d38;
       font-family: var(--font-heading);
-      font-size: 10px;
-      font-weight: 700;
+      font-size: 11px;
+      font-weight: 600;
       letter-spacing: 1.5px;
       text-transform: uppercase;
-      padding: 4px 12px;
+      padding: 4px 14px;
       border-radius: 20px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
     }
 
     .plan-header {
@@ -192,18 +205,28 @@
 
     .plan-title {
       font-family: var(--font-heading);
-      font-size: 20px;
-      font-weight: 700;
-      color: #ffffff;
-      letter-spacing: 0.5px;
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--c-navy);
+      letter-spacing: 1px;
+      text-transform: uppercase;
       margin-bottom: 6px;
+    }
+
+    .plan-card.featured .plan-title {
+      color: var(--c-featured-text-primary);
     }
 
     .plan-description {
       font-size: 13px;
+      font-weight: 300;
       color: var(--c-text-secondary);
       line-height: 1.5;
       min-height: 38px;
+    }
+
+    .plan-card.featured .plan-description {
+      color: var(--c-featured-text-secondary);
     }
 
     .plan-price-container {
@@ -212,27 +235,40 @@
       gap: 6px;
       margin: 20px 0 24px;
       padding-bottom: 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(12, 29, 56, 0.08);
+    }
+
+    .plan-card.featured .plan-price-container {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
     }
 
     .plan-currency {
       font-family: var(--font-heading);
-      font-size: 24px;
-      color: var(--c-gold);
-      font-weight: 600;
+      font-size: 26px;
+      color: #b89047;
+      font-weight: 500;
     }
 
     .plan-price {
       font-family: var(--font-heading);
-      font-size: 42px;
-      font-weight: 700;
-      color: #ffffff;
+      font-size: 46px;
+      font-weight: 500;
+      color: var(--c-navy);
       line-height: 1;
+    }
+
+    .plan-card.featured .plan-price {
+      color: #ffffff;
     }
 
     .plan-period {
       font-size: 13px;
+      font-weight: 300;
       color: var(--c-text-muted);
+    }
+
+    .plan-card.featured .plan-period {
+      color: var(--c-featured-text-muted);
     }
 
     /* Features List */
@@ -250,27 +286,36 @@
       align-items: flex-start;
       gap: 10px;
       font-size: 13.5px;
-      color: #d1d5db;
+      font-weight: 300;
       line-height: 1.45;
+      color: #2d3748;
+    }
+
+    .plan-card.featured .feature-item {
+      color: #e2e8f0;
     }
 
     .feature-icon {
-      color: var(--c-gold);
-      flex-shrink: 0;
-      margin-top: 2px;
       width: 16px;
       height: 16px;
+      color: #b89047;
+      flex-shrink: 0;
+      margin-top: 2px;
     }
 
-    /* CTA Button */
+    .plan-card.featured .feature-icon {
+      color: var(--c-gold);
+    }
+
+    /* Plan CTA Buttons */
     .plan-btn {
       width: 100%;
       padding: 14px 20px;
       border-radius: var(--radius-sm);
       font-family: var(--font-heading);
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 2px;
       text-transform: uppercase;
       cursor: pointer;
       border: 1px solid transparent;
@@ -280,25 +325,36 @@
       justify-content: center;
       gap: 8px;
       background: var(--c-gold);
-      color: var(--c-navy-deep);
+      color: #0c1d38;
     }
 
     .plan-btn:hover {
       background: var(--c-gold-hover);
       transform: scale(1.01);
-      box-shadow: 0 6px 20px rgba(197, 160, 89, 0.35);
+      box-shadow: 0 6px 16px rgba(197, 160, 89, 0.35);
     }
 
     .plan-btn.secondary {
-      background: transparent;
-      border-color: var(--c-gold);
-      color: var(--c-gold);
+      background: #0c1d38;
+      border-color: #0c1d38;
+      color: #ffffff;
     }
 
     .plan-btn.secondary:hover {
-      background: var(--c-gold-subtle);
+      background: #162b4d;
+      border-color: #162b4d;
       color: #ffffff;
-      border-color: var(--c-gold-hover);
+      box-shadow: 0 6px 16px rgba(12, 29, 56, 0.25);
+    }
+
+    .plan-card.featured .plan-btn {
+      background: var(--c-gold);
+      color: #0c1d38;
+    }
+
+    .plan-card.featured .plan-btn:hover {
+      background: #d4af37;
+      box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4);
     }
 
     .plan-btn:disabled {
@@ -310,8 +366,8 @@
 
     /* White Glove / B2B Section */
     .b2b-section {
-      background: linear-gradient(135deg, rgba(14, 30, 56, 0.6) 0%, rgba(8, 18, 32, 0.8) 100%);
-      border: 1px solid var(--c-card-border);
+      background: #ffffff;
+      border: 1px solid rgba(12, 29, 56, 0.12);
       border-radius: var(--radius-lg);
       padding: 32px 36px;
       display: flex;
@@ -319,17 +375,22 @@
       align-items: center;
       justify-content: space-between;
       gap: 24px;
+      box-shadow: var(--c-card-shadow);
     }
 
     .b2b-content h3 {
       font-family: var(--font-heading);
-      font-size: 20px;
-      color: #ffffff;
+      font-size: 24px;
+      color: var(--c-navy);
       margin-bottom: 6px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      text-transform: uppercase;
     }
 
     .b2b-content p {
       font-size: 13.5px;
+      font-weight: 300;
       color: var(--c-text-secondary);
       max-width: 580px;
       line-height: 1.5;
@@ -342,23 +403,23 @@
     }
 
     .b2b-btn {
-      padding: 12px 20px;
+      padding: 12px 22px;
       border-radius: var(--radius-sm);
       font-family: var(--font-heading);
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 1.2px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
       text-transform: uppercase;
       cursor: pointer;
-      border: 1px solid var(--c-gold-border);
-      background: rgba(197, 160, 89, 0.08);
-      color: var(--c-gold);
+      border: 1px solid var(--c-navy);
+      background: transparent;
+      color: var(--c-navy);
       transition: all 0.2s ease;
     }
 
     .b2b-btn:hover {
-      background: var(--c-gold);
-      color: var(--c-navy-deep);
+      background: var(--c-navy);
+      color: #ffffff;
     }
 
     /* Spinner */
@@ -367,7 +428,7 @@
       width: 14px;
       height: 14px;
       border: 2px solid rgba(0, 0, 0, 0.2);
-      border-top-color: var(--c-navy-deep);
+      border-top-color: var(--c-navy);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -410,8 +471,7 @@
 
     <!-- Header Section -->
     <div class="header-section">
-      <span class="header-tag">Membership & Subscriptions</span>
-      <h1 class="header-title">The Classic Planning Herald</h1>
+      <h1 class="header-title">Membership & Subscriptions</h1>
       <p class="header-subtitle">
         Join architects, urbanists, and civic leaders worldwide. Unlock full access to long-form scholarly essays, exclusive issues, and archival research.
       </p>
@@ -456,6 +516,22 @@
       sendAction("SUBSCRIBE_CLICK", { planId: planId });
     }
 
+    // Plan Priority Sorter: 1. Free -> 2. Single Issue -> 3. Yearly
+    function _sortPlans(plansList) {
+      function getPrio(p) {
+        const type = (p.subscriptionType || p.description || "").toLowerCase();
+        const name = (p.planName || p.title || "").toLowerCase();
+        const raw = String(p.rawPrice || p.pricing || p.price || "").toLowerCase();
+        if (type.includes("free") || name.includes("free") || raw.includes("€0") || raw.includes("$0") || p.price === 0) return 1;
+        if (type.includes("single") || name.includes("single") || raw.includes("edition") || raw.includes("issue")) return 2;
+        return 3;
+      }
+      return [...plansList].sort((a, b) => {
+        const diff = getPrio(a) - getPrio(b);
+        return diff !== 0 ? diff : (a.price - b.price);
+      });
+    }
+
     // Render Plans Grid
     function renderPlans(plans) {
       const grid = document.getElementById("plansGrid");
@@ -466,8 +542,10 @@
         return;
       }
 
-      plans.forEach((plan, index) => {
-        const isFeatured = !!plan.isFeatured || (index === 1 && plans.length > 1);
+      const sortedPlans = _sortPlans(plans);
+
+      sortedPlans.forEach((plan) => {
+        const isFeatured = !!plan.isFeatured;
         const card = document.createElement("div");
         card.className = `plan-card ${isFeatured ? 'featured' : ''}`;
 
@@ -484,7 +562,8 @@
 
         const currencySymbol = plan.currency === "USD" ? "$" : (plan.currency || "$");
         const price = plan.price !== undefined ? plan.price : 0;
-        const ctaText = plan.ctaText || "Subscribe Now";
+        const periodText = plan.periodText || (plan.price === 0 ? "Free" : "/ year");
+        const ctaText = plan.ctaText || (plan.price === 0 ? "Get Started Free" : "Subscribe Now");
 
         card.innerHTML = `
           ${badgeHtml}
@@ -497,7 +576,7 @@
             <div class="plan-price-container">
               <span class="plan-currency">${currencySymbol}</span>
               <span class="plan-price">${price}</span>
-              <span class="plan-period">/ year</span>
+              <span class="plan-period">${periodText}</span>
             </div>
 
             <ul class="plan-features">

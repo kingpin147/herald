@@ -33,6 +33,32 @@ function _parseNumericPrice(priceVal) {
 }
 
 /**
+ * Category priority for plan ordering:
+ * 1. Free Tier (Top)
+ * 2. Single Issue (Middle)
+ * 3. Yearly / Annual (End)
+ *
+ * @param {Object} plan
+ * @returns {number}
+ */
+function _getPlanCategoryPriority(plan) {
+  const type = (plan.subscriptionType || plan.description || "").toLowerCase();
+  const name = (plan.planName || plan.subscriptionTier || plan.title || "").toLowerCase();
+  const rawPrice = String(plan.rawPrice || plan.pricing || plan.price || "").toLowerCase();
+
+  // 1. Free Tier (Top)
+  if (type.includes("free") || name.includes("free") || rawPrice.includes("€0") || rawPrice.includes("$0") || plan.price === 0) {
+    return 1;
+  }
+  // 2. Single Issue (Middle)
+  if (type.includes("single") || name.includes("single") || rawPrice.includes("edition") || rawPrice.includes("issue")) {
+    return 2;
+  }
+  // 3. Yearly / Annual (End)
+  return 3;
+}
+
+/**
  * Retrieves all active pricing plans configured in the CMS.
  *
  * @returns {Promise<{success: boolean, plans: Array, error?: string}>}
@@ -63,30 +89,50 @@ export const getPricingPlans = webMethod(
       const items = results ? results.items : [];
 
       const formattedPlans = items.map(plan => {
-        const planName = plan.subscriptionTier || plan.planName || plan.title || "Subscription Plan";
-        const rawPrice = plan.pricing !== undefined ? plan.pricing : plan.price;
+        const planName = plan.subscriptionTier || plan.title || plan.planName || "Subscription Plan";
+        const rawPrice = plan.pricing !== undefined ? plan.pricing : (plan.price !== undefined ? plan.price : "");
         const numPrice = _parseNumericPrice(rawPrice);
         const planId = plan.planId || plan._id || planName;
-        const inclusions = plan.inclusions || plan.inclusionsAndAccessScope || plan.features || "";
+        const inclusions = plan.inclusionsAndAccessScope || plan.inclusions || plan.features || "";
         const featuresArray = Array.isArray(inclusions) 
           ? inclusions 
           : (typeof inclusions === "string" ? inclusions.split("\n").filter(Boolean) : []);
+        
+        const rawPriceStr = String(rawPrice).toLowerCase();
+        const subType = plan.subscriptionType || (rawPriceStr.includes("edition") ? "Single" : (numPrice === 0 ? "Free" : "Annual"));
+        const periodText = rawPriceStr.includes("edition") ? "/ edition" : (numPrice === 0 ? "Free" : "/ year");
+        
+        // Print Collector or marked featured
+        const isFeatured = !!plan.isFeatured || planName.toLowerCase().includes("print collector");
 
         return {
           _id: plan._id,
           planId: planId,
           planName: planName,
           price: numPrice,
-          currency: plan.currency || "USD",
-          durationDays: plan.durationDays || 365,
-          description: plan.subscriptionType || plan.description || "",
+          rawPrice: rawPrice,
+          periodText: periodText,
+          currency: plan.currency || (String(rawPrice).includes("€") ? "€" : "$"),
+          durationDays: plan.durationDays || (subType === "Single" ? 30 : 365),
+          subscriptionType: subType,
+          description: (typeof inclusions === "string" && inclusions.length > 0 && !inclusions.includes("\n")) ? inclusions : (plan.description || subType),
           features: featuresArray,
           technicalRouting: plan.technicalRouting || "",
           fulfillmentAutomation: plan.fulfillmentAutomation || "",
-          isFeatured: !!plan.isFeatured,
-          badgeText: plan.badgeText || "",
-          ctaText: plan.ctaText || "Subscribe Now"
+          isFeatured: isFeatured,
+          badgeText: plan.badgeText || (isFeatured ? "RECOMMENDED" : ""),
+          ctaText: numPrice === 0 ? "Get Started Free" : (plan.ctaText || "Subscribe Now")
         };
+      });
+
+      // Sort: 1. Free Subscription (Top) -> 2. Single Issue -> 3. Yearly Subscriptions (End)
+      formattedPlans.sort((a, b) => {
+        const prioA = _getPlanCategoryPriority(a);
+        const prioB = _getPlanCategoryPriority(b);
+        if (prioA !== prioB) {
+          return prioA - prioB;
+        }
+        return a.price - b.price;
       });
 
       return {
@@ -204,16 +250,23 @@ export const createSubscriptionPayment = webMethod(
           phone: phone,
           email: memberEmail,
           countryCode: countryCode
-        },
-        customData: {
-          planId: plan._id || plan.planId || planName,
-          planName: planName,
-          durationDays: plan.durationDays || 365,
-          memberId: member._id,
-          memberName: `${firstName} ${lastName}`.trim(),
-          memberEmail: memberEmail
         }
       });
+
+      // 4. Save pending record to correlate paymentId with memberId and plan
+      try {
+        await wixData.insert(USER_SUBSCRIPTIONS_COLLECTION, {
+          memberId: member._id,
+          subscriptionPlan: planName,
+          memberName: `${firstName} ${lastName}`.trim(),
+          subscriptionPrice: `$${planPrice}`,
+          status: "Pending",
+          paymentId: payment.id,
+          purchaseDateAndTime: new Date()
+        }, { suppressAuth: true });
+      } catch (insertErr) {
+        console.warn("pricing.web: Failed to record pending payment:", insertErr);
+      }
 
       return {
         success: true,

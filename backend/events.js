@@ -31,10 +31,17 @@ export async function wixPay_onPaymentUpdate(event) {
 
     const paymentId = payment.id;
     const status = payment.status;
-    const customData = payment.customData || {};
-    const memberId = customData.memberId || payment.userInfo?.id;
 
     console.log(`events.js: Payment update received for paymentId: ${paymentId}, status: ${status}`);
+
+    // Check if subscription record already exists for this payment (e.g. pending record)
+    let existing = await wixData.query(USER_SUBSCRIPTIONS_COLLECTION)
+      .eq("paymentId", paymentId)
+      .limit(1)
+      .find({ suppressAuth: true });
+
+    const existingRecord = existing.items.length > 0 ? existing.items[0] : null;
+    let memberId = existingRecord ? existingRecord.memberId : (payment.userInfo?.id || null);
 
     if (!memberId) {
       console.warn(`events.js: Payment ${paymentId} has no associated memberId.`);
@@ -43,30 +50,23 @@ export async function wixPay_onPaymentUpdate(event) {
 
     // ── 1. Handle Successful / Paid Status ─────────────────────────────
     if (status === "Successful" || status === "Paid") {
-      const planName = customData.planName || payment.items?.[0]?.name || "Herald Premium Subscription";
-      const memberName = customData.memberName || 
+      const planName = existingRecord?.subscriptionPlan || payment.items?.[0]?.name || "Herald Premium Subscription";
+      const memberName = existingRecord?.memberName || 
         (payment.userInfo?.firstName ? `${payment.userInfo.firstName} ${payment.userInfo.lastName || ""}`.trim() : "Member");
-      const durationDays = Number(customData.durationDays) || 365;
+      const durationDays = 365;
 
       const startDate = new Date();
       const expiryDate = new Date(startDate.getTime() + (durationDays * 24 * 60 * 60 * 1000));
       const priceStr = `$${payment.amount}`;
 
-      // Check if subscription already created for this payment (Idempotency)
-      let existing = await wixData.query(USER_SUBSCRIPTIONS_COLLECTION)
-        .eq("paymentId", paymentId)
-        .limit(1)
-        .find({ suppressAuth: true });
-
-      if (existing.items.length > 0) {
-        const subRecord = existing.items[0];
-        subRecord.status = "Active";
-        subRecord.subscriptionPlan = planName;
-        subRecord.subscriptionPrice = priceStr;
-        subRecord.expiryDate = expiryDate;
-        subRecord.updatedDate = new Date();
-        await wixData.update(USER_SUBSCRIPTIONS_COLLECTION, subRecord, { suppressAuth: true });
-        console.log(`events.js: Updated existing subscription in ${USER_SUBSCRIPTIONS_COLLECTION} for member ${memberId}.`);
+      if (existingRecord) {
+        existingRecord.status = "Active";
+        existingRecord.subscriptionPlan = planName;
+        existingRecord.subscriptionPrice = priceStr;
+        existingRecord.expiryDate = expiryDate;
+        existingRecord.updatedDate = new Date();
+        await wixData.update(USER_SUBSCRIPTIONS_COLLECTION, existingRecord, { suppressAuth: true });
+        console.log(`events.js: Updated subscription in ${USER_SUBSCRIPTIONS_COLLECTION} for member ${memberId}.`);
       } else {
         const newSubscription = {
           memberId: memberId,
